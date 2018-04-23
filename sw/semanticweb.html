@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="keywords" content="セマンティックウェブ,オントロジー,OWL,OWL2, semantic web, Linked Data" >
+    <meta name="description" content="この文書では、セマンティックウェブ、オントロジー、OWL、Linked Dataというものについて個人的に調べた結果を並べています。" >
+    <title>セマンティックウェブについてのメモ</title>
+	
+<link rel="stylesheet" type="text/css" href="./style.css" />
+</head>
+<body>
+<h1>セマンティックウェブについてのメモ</h1>
+公開       : 2012-02-19 <br>
+最終更新日 : $Date: 2012-02-19 03:56:05 +0900 (Sun, 19 Feb 2012) $
+<hr>
+<h2>前口上</h2>
+<p>
+この文書では、セマンティックウェブというものについて
+個人的に調べた結果を並べています。
+この文書は技術的に正確であることを意図して書いてはいますが、どこかで大嘘をついていたり、
+もっと有効な方法があることを見逃していたり、経年により陳腐化しているかもしれません。
+</p>
+<h2>目次</h2>
+<ol>
+<li><a href="#inShort">手短に言って何者か</a></li>
+<li><a href="#wantToDo">やりたいことは何か</a></li>
+<li><a href="#tool">実現のための道具立ては何か</a></li>
+<li><a href="#rule">全般的な決め事は何か</a></li>
+<li><a href="#OWL">OWLとはどういうものか</a></li>
+<li><a href="#misc">その他、雑駁なこと</a></li>
+</ol>
+
+
+<h2 id="inShort">手短に言って何者か</h2>
+<p>
+インターネット上のデータ、コンテンツ、リンクについて意味を付加することで利便性を向上させるためのプロジェクト。
+W3Cのティム・バーナーズ・リーが提唱している。
+</p>
+
+<h2 id="wantToDo">やりたいことは何か</h2>
+<ul>
+<li>
+ウェブ上の情報を処理するような知的なエージェントが動いて、
+検索以外の機能が実現できて、ユーザに便利になるようにしたい。
+<ul>
+<li>
+そのために、ウェブ上のデータのメタデータ（データについてのデータ）を機械で解釈できるような標準フォーマットを用意したい。
+</li>
+<li>
+さらに、ウェブ上のデータのリンクにもメタデータを持たせたい。リンク（＝つながり）に意味を記述するための仕組みが欲しい。
+</li>
+</ul>
+</li>
+
+
+</ul>
+<h2 id="tool">実現のための道具立ては何か</h2>
+<ul>
+<li>
+セマンティックウェブで扱うメタデータのことを<a href="http://ja.wikipedia.org/wiki/オントロジー">オントロジー</a>と呼ぶ。（言葉を決めることも道具立ての一つ。）
+</li>
+<li>
+オントロジー記述・交換言語仕様として<a href="http://www.w3.org/TR/owl-features/">OWL</a>,<a href="http://www.w3.org/RDF/">RDF</a>
+</li>
+<li>
+オントロジーの検索クエリー仕様として<a href="http://www.w3.org/TR/rdf-sparql-query/">SPARQL</a>
+</li>
+<li>
+既存HTMLにオントロジーを追加記述するための仕様として<a href="http://www.w3.org/TR/rdfa-syntax/">RDFa</a>
+</li>
+<li>
+オントロジー作成ツールとして、<a href="http://protege.stanford.edu/">Protege</a>
+</li>
+<li>
+オントロジーを処理するJavaのライブラリとして<a href="http://incubator.apache.org/jena/">Jena</a>
+</li>
+</ul>
+
+<p> 他にも色々なツールがある。</p>
+<h2 id="rule">全般的な決め事は何か</h2>
+<p>
+<a href="http://www.w3.org/2001/09/06-ecdl/">Digital Libraries and the Semantic Web</a>に、
+まとめがある。
+</p>
+
+
+<dl>
+
+<dt>何でも識別可能</dt>
+<dd>
+<a href="http://www.w3.org/2001/09/06-ecdl/slide11-0.html" >Everything Identifiable is on the Semantic Web</a>
+によると、すべてのもの（人物、場所、現実世界の物すべて）はオンライン上では<a href="http://ja.wikipedia.org/wiki/Uniform_Resource_Identifier">URI</a>で識別される。
+最近は、国際化のため<a href="http://ja.wikipedia.org/wiki/Internationalized_Resource_Identifier">IRI</a>も使われる。
+</dd>
+
+<dt>部分的な情報</dt>
+<dd>
+<a href="http://www.w3.org/2001/09/06-ecdl/slide12-0.html" >Partial Information</a>
+によると、ウェブは発展途上でありセマンティックウェブもそうである。
+誰でも何に対しても発言して良い。逆に言うとどこで誰が何について発言しているか、
+全体を完全に把握できている人はいないことも意味する。
+データが常に追加、変化がされる。それ故常に発見がある。
+</dd>
+
+
+
+<dt>信頼のウェブ</dt>
+<dd>
+<a href="http://www.w3.org/2001/09/06-ecdl/slide13-0.html" >Web of Trust</a>
+によると、ウェブ上の情報は何らかの文脈上に現れ、アプリケーションにとっては
+情報の信頼度を評価するために文脈が必要。ウェブ上のすべてを正しいと評価しない。
+真理、あるいは信頼度がアプリケーションに評価される。
+</dd>
+
+<dt>発展性</dt>
+<dd>
+<a href="http://www.w3.org/2001/09/06-ecdl/slide14-0.html" >Evolution</a>
+によると、独立した組織による活動が許されなくてはならない。
+古いものを修正するのではなく新しいものを追加することをサポートする。
+コミュニティに新旧の情報が混ざることによる情報の曖昧さやぶれをなくせるようにしなくてはならない。
+
+人間の理解が拡張するように拡張可能であって明示されたルールに則らなくてはならない。
+
+
+</dd>
+
+<dt>最小の設計</dt>
+<dd>
+<a href="http://www.w3.org/2001/09/06-ecdl/slide15-0.html" >Minimalist Design</a>
+によると、簡単なものは簡単に、複雑なものは実現可能なレベルまで簡単に作ることを前提にする。
+標準化も最小限にして、なるべく複雑にはしない。
+
+</dd>
+
+</dl>
+
+
+
+
+
+<h2 id="OWL">OWLとはどういうものか</h2>
+
+
+<p>
+Web Ontology Language（略称は OWL）は、オントロジーを表現する方式の1つである。
+<h3>データの構造としては<a target="blank"
+href="http://ja.wikipedia.org/wiki/グラフ理論">有向多重グラフ</a>の形をなす。</h3>
+<p>
+ノードが単一の知識・データそのもの。辺がノード同士がどういう意味でつながっているかを表現する。
+</p>
+<img src="multigraph.png" style="border:1px solid black"/>
+
+<h3>
+ノードは、その識別に<a href="http://ja.wikipedia.org/wiki/Uniform_Resource_Identifier">URI</a>
+ないしは<a href="http://ja.wikipedia.org/wiki/Internationalized_Resource_Identifier">IRI</a>
+を使う。</h3>
+
+<p>インターネット上の情報について管理することができる。</p>
+
+<h3>ノードと辺の分類にオブジェクト指向モデルを使う</h3>
+<p>
+クラス、インスタンスでノードを分類する。プロパティ、プロパティインスタンスで辺を分類する。
+（プロパティインスタンスというのは非公式な呼び方。）
+</p>
+
+<h3>クラスの多重継承をしてよい。</h3>
+<p>
+オブジェクト指向プログラミング言語とは違い、多重継承には困難が付きまとわない。
+むしろ、データ分類のための表現力を確保するために必要なこと。
+</p>
+
+<h3>あるインスタンスが、同時に複数のクラスのインスタンスであってよい</h3>
+<p>
+結局のところクラスに属すると言うことは、
+<a href="http://ja.wikipedia.org/wiki/%E3%82%BF%E3%82%AE%E3%83%B3%E3%82%B0_(%E3%82%B3%E3%83%B3%E3%83%94%E3%83%A5%E3%83%BC%E3%82%BF)">
+タグ</a>による分類のようなものなのである。
+</p>
+
+<h3>同一のノードが、同時にクラスでありインスタンスであってよい</h3>
+<p>
+データの表現力の確保のため。ただし、OWL Full(後述)に限る。推論の決定性が損なわれるため。
+</p>
+
+<h3>OWL にはすべてのクラスのルートとなるクラスと、すべてのクラスのサブクラスとなるクラスがある</h3>
+<p>
+ルートは owl:Thing 、すべてのクラスのサブクラスは owl:Nothing と呼ばれている。OWLはデータ構造の基礎として
+記述論理(後述)の枠組みを使っている。それゆえ、このようなことが定められている。
+データモデリングの実利用上何が嬉しいかは別の話。
+</p>
+
+<h3>プロパティは単体で存在しうる</h3>
+<p>
+オブジェクト指向プログラミング言語ではクラスが必要だが、OWLではクラスを必要としない。
+物事に自由に記述をつけることを可能にするため、このようになっている。
+同一クラスに所属する別のインスタンスに全く別々のプロパティを設定することが可能。
+</p>
+
+<h3>開世界仮説で物事を評価する。</h3>
+<p>
+<!--
+誰でも何に対しても発言して良い（＝どこで誰が何について発言しているかわからないという意味）
+-->
+存在するデータの範囲で真と言えないならば「不明」という解釈がされる。
+これが仮にデータベースでは、存在しないデータについては「偽」となる。
+</p>
+<h3>OWLにはサブセットが３個ある</h3>
+<p>
+<dl>
+<dt>OWL Full</dt>
+<dd>OWLの仕様範囲内で、最も自由なオントロジーの記述が許される。
+代わりに推論の決定性が確保されない。（＝推論結果が真とも偽とも言えない場合がある）
+</dd>
+<dt>OWL DL</dt>
+<dd>オントロジーの記述に一部制限がある。
+例えばクラスでありかつインスタンスであるノードを許さない。(OWL Fullは許す。)
+ただし推論結果は必ず決定的になる。
+</dd>
+<dt>OWL Lite</dt>
+<dd>オントロジーの記述にOWL DL以上の制限がかかる。
+簡単なオントロジーを簡素なツールで処理する場合のためのサブセット。
+</dd>
+</dl>
+
+<h3>OWL の理論的バックボーンは</h3>
+<p>
+OWLは記述論理(Description Logic)をその理論的バックボーンにしている。
+記述論理では記述力の異なる幾つかの言語（言語ファミリーと呼んでいる。）があり、
+OWL のサブセットに相当する言語がある。
+</p>
+
+<h3>記述論理の言語ファミリーとは</h3>
+<p>
+AL 言語　ALC言語などFL-言語、SI言語などがある。詳細は参考文献を参照
+</p>
+
+<h3>OWL Liteに相当する記述言語の言語ファミリーは</h3>
+<p>
+SHIF(D)と呼ばれるファミリーが相当する。比較的素朴なファミリーALCに、推移的ロール、逆ロールを加えるとSI言語になる。
+SI言語に、ロール階層(H)と関数的ロール(F)を加えるとSHIF言語になる。SHIFに、データ型とデータ型ロールを加えると
+SHIF(D)となり、これが、OWL Liteに相当する。
+</p>
+<h3>OWL DLに相当する記述言語の言語ファミリーは</h3>
+<p>
+SHOIN(D)と呼ばれるファミリーが相当する。SI言語にロール階層(H)とONE-OF概念(O)と制限なし数量限定(N)を加えると
+SHOIN言語になる。これにSHOINにデータ型とデータ型ロールを加えると
+SHOIN(D)となり、これが、OWL DLに相当する。
+（詳細は参考文献を参照）
+<!--この説明ではただの言葉遊びにしかなっていない。-->
+</p>
+
+
+
+<h3>OWL DLとOWL Liteの充足可能性問題の計算量は</h3>
+<p>
+OWL DL(= SHOIN(D)) は、決定的チューリングマシンにより指数関数時間(EXPTIME)で計算可能。
+OWL Lite(= SHIF(D)) は、非決定的チューリングマシンにより指数関数時間(NEXPTIME)で計算可能。
+</p>
+
+
+<h3>OWL 2という新しいバージョンがある</h3>
+<p>
+主な変更点は、(1)表現力の向上(2)簡単構文の導入(3)EL QL RL の３個のprofile(サブセット)の導入　
+(4) URIに代わり、IRIの導入。
+</p>
+
+<dl>
+<dt>OWL EL</dt>
+<dd>クラスが多いオントロジー向け。(<a href="http://www.nlm.nih.gov/research/umls/Snomed/snomed_main.html">SNOMED Clinical Terms</a> 
+<a href="https://cabig.nci.nih.gov/community/tools/NCI_Thesaurus" >the NCI thesaurus</a>)
+
+推論の計算量が最悪の場合でも多項式時間(PTIME)になる。
+
+OWL EL のELは、記述論理のEL言語のEL.
+
+</dd>
+<dt>OWL QL</dt>
+<dd>リレーショナルデータベースと相性が良い。(シソーラス、ERモデル。UMLモデルなど)
+推論の計算量が最悪の場合で非決定的アルゴリズムで対数空間(NLOGSPACE)になる。
+クラスは少ないが、インスタンスは多いオントロジー向け。
+OWL QL のQLは、SQLのQL.
+</dd>
+<dt>OWL RL</dt>
+<dd>
+ルールベースの技術と相性が良い。推論の計算量が最悪の場合でも多項式時間(PTIME)になる。
+RDFのトリプルを直接扱える。
+OWL RLのRLは、Rule Language のRL。
+</dd>
+<dl>
+
+<h2 id="misc">その他、雑駁なこと</h3>
+
+<p>
+最近では、Linked Dataという名前の活動がされている。（これについては僕もまだまだ勉強中。）
+</p>
+
+<p>
+
+インターネット上のデータ云々とはちょっと外れるが、
+バイオインフォマティクスの研究者はオントロジーの持つ
+データ整理の技法を応用して生命情報（遺伝子とか）を整理し機械に処理させやすくすることで生命現象の研究を進めたい。
+<a href="http://www.geneontology.org/">http://www.geneontology.org/</a>
+<a href="https://database.riken.jp/sw/ja/Gene_Ontology/ria250i/">https://database.riken.jp/sw/ja/Gene_Ontology/ria250i/</a>
+
+</p>
+
+<p>
+いったいどんな応用が？という意味では一般ユーザから見てわかりやすい製品とかサービスがあるわけではない。
+このページにあることは技術的理論的な話ばかり。そういう意味では、まだまだ研究者が下積みと準備を
+重ねている段階にある。
+</p>
+
+<!--
+<h3></h3>
+<p></p>
+-->
+<hr />
+<h2>参考文献</h2>
+<ul>
+<li>
+<a href="http://www.amazon.co.jp/dp/4627829310">
+セマンティック・ウェブのためのRDF/OWL入門 神崎 正英
+</a>
+</li>
+<li>
+<a href="http://www.amazon.co.jp/dp/4274207455">
+記述論理とWebオントロジー言語 (知の科学) 兼岩 憲
+</a>
+</li>
+<li>
+<a href="http://www.asahi-net.or.jp/~ax2s-kmtn/internet/owl2/rec-owl2-overview-20091027.html">
+OWL 2ウェブ・オントロジー言語 ドキュメント概要 (翻訳) 上綱 秀治
+</a>
+</li>
+<li>
+<a href="http://www.asahi-net.or.jp/~ax2s-kmtn/internet/search2.html#semanticweb">
+セマンティック・ウェブ 上綱 秀治
+</a>
+</li>
+<li>
+<a href="http://en.wikipedia.org/wiki/Web_Ontology_Language">
+OWL(英語版Wikipedia)</a>
+</li>
+<li>
+<a href="http://www.w3.org/TR/owl-profiles/">
+OWL 2 Web Ontology LanguageProfiles</a>
+</li>
+<li>
+<a href="http://www.w3.org/2007/OWL/wiki/SROIQ">
+SROIQ</a> OWL 2 が対応する記述論理の言語ファミリー。
+</li>
+</ul>
+
+
+
+
+
+
+<hr />
+<p>
+<a rel="license" href="http://creativecommons.org/licenses/by/2.1/jp/">
+<img alt="クリエイティブ・コモンズ・ライセンス" style="border-width:0" src="http://i.creativecommons.org/l/by/2.1/jp/88x31.png" /></a>
+<br />この 作品 は <a rel="license" href="http://creativecommons.org/licenses/by/2.1/jp/">クリエイティブ・コモンズ 表示 2.1 日本 
+ライセンスの下に提供されています。</a><br>
+
+作者: Fukuhara Kazuro.
+</p>
+<p><a href="../index.html">トップページに戻る</a></p>
+
+
+</body>
+</html>

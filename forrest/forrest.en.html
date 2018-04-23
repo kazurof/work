@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="keywords" content="Apache Forrest" >
+    <meta name="description" content="This document have some TIPS about Apache Forrest that I studied." >
+    <link rel="stylesheet" href="./style.css" type="text/css">
+    <title>Apache Forrest TIPS</title>
+	
+<link rel="stylesheet" type="text/css" href="./style.css" />
+</head>
+<body>
+<div style="float:right"><a href="forrest.html">JAPANESE</a></div>
+
+<h1>Apache Forrest TIPS</h1>
+Published       : 2012-02-25 <br>
+Last update  : $Date: 2012-03-19 00:49:13 +0900 (Mon, 19 Mar 2012) $
+<hr>
+<h2>Preface</h2>
+<p>
+This document have some TIPS about <a href="http://forrest.apache.org/">Apache Forrest</a> that I studied in personal.
+I intend this is correct in technically, but I may tell a lie , or this may be not effective way 
+or this may be aged. It may not be easy to read and understand beacause this is my frontline of understanding.
+</p>
+<h2>Contents</h2>
+<ol>
+<li><a href="#env">Environment</a></li>
+<li><a href="#bug0.9">Solve the bug for Forrest-0.9</a></li>
+<li><a href="#link">Reference</a></li>
+</ol>
+<h2 id="env">Environment</h2>
+
+<ul>
+<li>Apache Forrest 0.9</li>
+<li>Windows XP</li>
+<li>Java 6</li>
+</ul>
+
+<h2 id="bug0.9">Solve the bug for Forrest-0.9</h2>
+<h3>NullPointerException in tutorial</h3>
+<p>
+According to the first tutorial 
+<a href="http://forrest.apache.org/#Explanation+and+features">Explanation and features</a> ,
+</p>
+
+<pre class="result">
+>forrest seed
+>forrest
+</pre>
+<p>should be executed. But at the time &gt;forrest ,
+the stacktrace of NullPointerException will came. 
+(like <a href="http://mail-archives.apache.org/mod_mbox/forrest-dev/201112.mbox/%3C20111222120436.311B217EB@forrest.zones.apache.org%3E">this</a>)
+I'll clear this as the first step.
+
+</p>
+<pre class="result">
+java.lang.NullPointerException
+        at org.apache.cocoon.environment.AbstractEnvironment.release(AbstractEnvironment.java:563)
+        at org.apache.cocoon.environment.wrapper.MutableEnvironmentFacade.release(MutableEnvironmentFacade.java:314)
+        at org.apache.cocoon.generation.FileGenerator.recycle(FileGenerator.java:64)
+        at org.apache.avalon.excalibur.pool.InstrumentedResourceLimitingPool.put(InstrumentedResourceLimitingPool.java:407)
+        at org.apache.avalon.excalibur.component.PoolableComponentHandler.doPut(PoolableComponentHandler.java:212)
+        at org.apache.avalon.excalibur.component.ComponentHandler.put(ComponentHandler.java:425)
+        at org.apache.avalon.excalibur.component.ExcaliburComponentSelector.release(ExcaliburComponentSelector.java:307)
+        at org.apache.cocoon.components.ExtendedComponentSelector.release(ExtendedComponentSelector.java:301)
+        at org.apache.cocoon.components.pipeline.AbstractProcessingPipeline.recycle(AbstractProcessingPipeline.java:723)
+        at org.apache.cocoon.components.pipeline.impl.BaseCachingProcessingPipeline.recycle(BaseCachingProcessingPipeline.java:78)
+        at org.apache.cocoon.components.pipeline.impl.AbstractCachingProcessingPipeline.recycle(AbstractCachingProcessingPipeline.java:1130)
+        at org.apache.avalon.excalibur.pool.InstrumentedResourceLimitingPool.put(InstrumentedResourceLimitingPool.java:407)
+        at org.apache.avalon.excalibur.component.PoolableComponentHandler.doPut(PoolableComponentHandler.java:212)
+        at org.apache.avalon.excalibur.component.ComponentHandler.put(ComponentHandler.java:425)
+        at org.apache.avalon.excalibur.component.ExcaliburComponentSelector.release(ExcaliburComponentSelector.java:307)
+        at org.apache.cocoon.components.ExtendedComponentSelector.release(ExtendedComponentSelector.java:301)
+        at org.apache.cocoon.components.EnvironmentDescription.release(CocoonComponentManager.java:695)
+        at org.apache.cocoon.components.CocoonComponentManager.endProcessing(CocoonComponentManager.java:262)
+        at org.apache.cocoon.Cocoon.process(Cocoon.java:739)
+        at org.apache.cocoon.bean.CocoonWrapper.getPage(CocoonWrapper.java:514)
+        at org.apache.cocoon.bean.CocoonBean.processTarget(CocoonBean.java:499)
+        at org.apache.cocoon.bean.CocoonBean.process(CocoonBean.java:356)
+        at org.apache.cocoon.Main.main(Main.java:321)
+</pre>
+
+<p>
+If you are in urgent, copy <a href="cocoon-2.1.11-fixed.jar">this jar file</a> to <code>%FORREST_HOME%\lib\core\</code>.
+And rename cocoon.2.1.12-dev.jar to other file extension so that forrest does not use it.
+With this modification, no NullPointerException will happen.
+
+</p>
+
+<p>
+For distrustful persons. 
+You can build this jar file adding small modification to the source of Cocoon2.1.11 and build.
+</p>
+<ol>
+<li>Download cocoon-2.1.11-src.zip from
+<a href="http://cocoon.apache.org/mirror.cgi">http://cocoon.apache.org/mirror.cgi</a>.
+</li>
+
+<li>Extract the zip to some working folder.</li>
+<li>Add check against null at line 562 of<code>\src\java\org\apache\cocoon\environment\AbstractEnvironment.java</code>
+<br>
+<div style="margin-top: 10px;">
+Before.
+</div>
+<pre class="code">
+public void release(final org.apache.excalibur.source.Source source) {
+    if (null != source) {
+        this.sourceResolver.release(source);
+    }
+}
+</pre>
+<div>
+After.
+</div>
+<pre class="code">
+public void release(final org.apache.excalibur.source.Source source) {
+    if (null != source && this.sourceResolver != null ) {
+        this.sourceResolver.release(source);
+    }
+}
+</pre>
+</li>
+<li>Build jar file with build.bat in zip file. You need JDK 5, Java6 can't build it.
+Refer <a href="http://cocoon.apache.org/2.1/installing/index.html">Installing Apache Cocoon</a>
+in detail.
+</li>
+</ol>
+<p>
+You may think that "Is this modification OK? No side effect? " But now I don't know correct way.
+ Please treat this as some workaround or one of hack.
+</p>
+<h3>Mojibake in Japanese</h3>
+<p>
+If you execute >forrest seed , you will get the template file of the content.
+You wants to edit xml files under \src\documentation\content\xdocs , 
+but to edit Japanese Charactor (or some charactor except for us-ascii , CJKV or else), you need modify some
+setting file.
+</p>
+<p>
+Add encoding="UTF-8" attribute at fixcrlf task at the line 255 of %FORREST_HOME%\main\targets\site.xml
+(Forrest version0.9)
+Setting UTF-8, but you need set actual encoding setting as you use. I guess UTF-8 is no problem 
+for modern selection.With this , you can execute >forrest without mojibake exactly.
+
+</p>
+
+<div class="code"><code>        &lt;fixcrlf srcdir=&quot;${project.site-dir}&quot; encoding=&quot;UTF-8&quot;&gt;  &lt;!-- add attribute here --&gt;<br>
+          &lt;include name=&quot;**/*.html&quot;/&gt;<br>
+&lt;!-- The CSS Includes are a workaround for FOR-925 --&gt;<br>
+          &lt;include name=&quot;**/*.css&quot;/&gt;<br>
+        &lt;/fixcrlf&gt;</code></div>
+
+<p>
+Mojibake in html contents will cleard, but PDF file will not.(font problem?) 
+I'll check this later.
+</p>
+
+<h2 id="link">Reference in Japanese.</h2>
+<ul>
+
+<li><a href="http://phinloda.jugem.cc/?eid=264">http://phinloda.jugem.cc/?eid=264</a></li>
+<li><a href="http://phinloda.jugem.cc/?eid=266">http://phinloda.jugem.cc/?eid=266</a></li>
+<li><a href="http://sdl.ist.osaka-u.ac.jp/~okano/forrest.html">http://sdl.ist.osaka-u.ac.jp/~okano/forrest.html</a></li>
+<li><a href="http://d.hatena.ne.jp/skatworks/20110909/1315591814">http://d.hatena.ne.jp/skatworks/20110909/1315591814</a></li>
+<li><a href="http://sourceforge.jp/projects/apacheforrestjp/">http://sourceforge.jp/projects/apacheforrestjp/</a></li>
+<li><a href="http://dev.ariel-networks.com/Members/nagai/categories/forrest/">http://dev.ariel-networks.com/Members/nagai/categories/forrest/</a></li>
+
+</ul>
+<hr />
+<p>
+<a rel="license" href="http://creativecommons.org/licenses/by/2.1/jp/"><img alt="Creative Commons License" style="border-width:0" 
+src="http://i.creativecommons.org/l/by/2.1/jp/88x31.png" /></a><br />
+This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/2.1/jp/">Creative Commons Attribution 2.1 Japan License</a>.<br>
+
+Author: Fukuhara Kazuro.
+</p>
+<p><a href="../index.html">top page</a></p>
+
+</body>
+</html>

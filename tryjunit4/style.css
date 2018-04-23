@@ -1,0 +1,21 @@
+/*
+$Date: 2013-02-11 14:21:57 +0900 (Mon, 11 Feb 2013) $
+*/
+img{
+    border: black 1px;
+	margin-top: 5px;
+	margin-bottom: 5px;
+}
+
+
+div.code{
+	border: dashed gray 1px;
+	PADDING: 0 10px 0 5px;
+}
+
+pre.result{
+	font-size:medium;
+	color:#FFFFFF;
+	BACKGROUND:#330099;
+	PADDING: 4px;
+}

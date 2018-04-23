@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="description" content="この文書では、JUnit4について動かしてみた結果をまとめています。" >
+
+<meta property="og:title" content="JUnit4をやってみよう" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://www7b.biglobe.ne.jp/~archer/tryjunit4/tryjunit4.html" />
+<meta property="og:image" content="http://www7b.biglobe.ne.jp/~archer/tryjunit4/pageimage.png" />
+<meta property="og:description" content="この文書では、JUnit4について動かしてみた結果をまとめています。">
+<meta property="og:locale" content="ja_JP" />
+<meta property="fb:app_id" content="593428597348052" />
+
+
+    <script type="text/javascript" src="shscripts/shCore.js" ></script>
+    <script type="text/javascript" src="shscripts/shBrushJava.js"></script>
+    
+        <link rel="stylesheet" href="./style.css" type="text/css">
+    <link rel="stylesheet" href="shstyles/shCore.css" type="text/css">
+    <link rel="stylesheet" href="shstyles/shThemeDefault.css" type="text/css">
+    
+    
+    <title>JUnit4をやってみよう</title>
+    <script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-38403046-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+</head>
+<body>
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) return;
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/ja_JP/all.js#xfbml=1&appId=593428597348052";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+<h1>JUnit4をやってみよう</h1>
+最終更新日 : $Date: 2013-11-09 01:12:39 +0900 (Sat, 09 Nov 2013) $ <br>
+<div class="fb-like" data-href="http://www7b.biglobe.ne.jp/~archer/tryjunit4/tryjunit4.html" data-send="false" data-width="1050" data-show-faces="false"></div>
+<hr>
+<h2>要約</h2>
+<p>この文書では、<a href="http://junit.sourceforge.net/">JUnit4</a>
+について動かしてみた結果をまとめています。
+この文書は技術的に正確であることを意図して書いてはいますが、どこかで大嘘をついていたり、経年により陳腐化しているかもしれません。
+もっと有効な方法があることを見逃しているかもしれません。
+<br>
+姉妹ページ、<a href="tryjunit4Rules.html">JUnit4をやってみよう(Rules編)</a>、<a href="tryjunit4More.html">JUnit4をもっとやってみよう</a>ももどうぞ。<br>
+サンプルソースは<a href="https://github.com/kazurof/tryjunit4">https://github.com/kazurof/tryjunit4</a> においてあります。
+</p>
+<h2>目次</h2>
+<ol>
+<li><a href="#addMainMethod">テストケースにmainメソッドを付加する。</a></li>
+<li><a href="#validateBeforeAfter">@BeforeClass,@Before,@AfterClass,@Afterそれぞれの違いを検証する。</a></li>
+<li><a href="#AllTests">大量のテストケースを一括で動かす。</a></li>
+<li><a href="#assertThat">assertThatを試す（JUnit4.4以降）</a></li>
+<li><a href="#Assumptions">Assumptionsを試す（JUnit4.4以降）</a></li>
+<li><a href="#Theories">Theoriesを試す（JUnit4.4以降）</a></li>
+</ol>
+<h2 id="addMainMethod">テストケースに<code>main</code>メソッドを付加する。</h2>
+<p>
+テストを実行のさせ方にはいろいろやり方があると思いますが、
+全てのクラスに<code>main</code>メソッドが用意してあると便利です。やり方としては<code>main</code>メソッドから、<code>org.junit.runner.JUnitCore#main(String... args)</code>
+を呼びます。
+</p>
+<p>例</p>
+<div class="code">
+<pre class="brush:java;">
+package tryjunit4;
+
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
+import org.junit.runner.JUnitCore;
+
+public class SampleTest {
+
+    public static void main(String[] args) {
+        JUnitCore.main(SampleTest.class.getName());
+    }
+
+    @Test
+    public void testOne() {
+        String str = "りんご";
+        assertEquals(str.charAt(0), 'り');
+    }
+}
+</pre>
+</div>
+
+
+<p>実行結果（CLASSPATHで、junit4.11.jarが設定されているとする。）</p>
+<pre class="result">
+>java tryjunit4.SampleTest
+JUnit version 4.11
+.
+Time: 0
+
+OK (1 test)
+
+
+>
+</pre>
+<h2 id="validateBeforeAfter">@BeforeClass,@Before,@AfterClass,@Afterそれぞれの違いを検証する。</h2>
+<p>サンプルコードを書いて動かしてみました。さらに、コンストラクタや
+staticイニシャライザや、インスタンスイニシャライザも検証してみます。
+</p>
+<p>例</p>
+<div class="code">
+<pre class="brush:java;">
+package tryjunit4;
+
+import static org.junit.Assert.assertEquals;
+
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.JUnitCore;
+
+public class BeforeAfterTest {
+
+    static {
+        System.out.println("staticイニシャライザが呼ばれています。");
+    }
+
+    public static void main(String[] args) {
+        JUnitCore.main(AnotherTest.class.getName());
+    }
+
+    {
+        System.out.println("インスタンスイニシャライザが呼ばれています。");
+    }
+
+    public AnotherTest() {
+        System.out.println("コンストラクタが呼ばれています。");
+    }
+
+    @BeforeClass
+    public static void doBeforeClass() {
+        System.out.println("doBeforeClassしています。");
+    }
+
+    @Before
+    public void doBefore() {
+        System.out.println("doBeforeしています。");
+    }
+
+    @Test
+    public void testOne() {
+        String str = "りんご";
+        assertEquals(str.charAt(1), 'ん');
+        System.out.println("testOneしています。");
+    }
+
+    @Test
+    public void testTwo() {
+        String str = "りんご";
+        assertEquals(str.charAt(2), 'ご');
+        System.out.println("testTwoしています。");
+    }
+
+    @After
+    public void doAfter() {
+        System.out.println("doAfterしています。");
+    }
+
+    @AfterClass
+    public static void doAfterClass() {
+        System.out.println("doAfterClassしています。");
+    }
+}
+
+
+</pre>
+</div>
+
+
+<p>実行結果（CLASSPATHで、junit4.11.jarが設定されているとする。）</p>
+<pre class="result">
+>java tryjunit4.BeforeAfterTest
+staticイニシャライザが呼ばれています。
+JUnit version 4.11
+doBeforeClassしています。
+インスタンスイニシャライザが呼ばれています。
+コンストラクタが呼ばれています。
+.doBeforeしています。
+testOneしています。
+doAfterしています。
+インスタンスイニシャライザが呼ばれています。
+コンストラクタが呼ばれています。
+.doBeforeしています。
+testTwoしています。
+doAfterしています。
+doAfterClassしています。
+
+Time: 0.047
+
+OK (2 tests)
+
+
+>
+</pre>
+<p>これを見ると、</p>
+<ol>
+<li>AnotherTestクラスがロードされてstaticイニシャライザが走る</li>
+<li>mainメソッド経由でJUnitが実行され、JUnitのバージョン表示がされる</li>
+<li>@BeforeClassアノテーションのメソッドが呼ばれる。</li>
+
+<li>以下の内容をテストメソッドごとに繰り返す。
+<ol>
+<li>インスタンスイニシャライザとコンストラクタが呼ばれる。</li>
+<li>@Beforeアノテーションのメソッドが呼ばれる。</li>
+<li>テストメソッドが呼ばれる。</li>
+<li>@Afterアノテーションのメソッドが呼ばれる。</li>
+</ol>
+
+</li>
+<li>@AfterClassアノテーションのメソッドが呼ばれる。</li>
+</ol><p>
+といった順番で動くようです。
+結局テスト毎の前処理は、コンストラクタでも@Beforeアノテーションのメソッドでもできるみたいですね。
+この緩やかさは冗長な気もしますが私の考えとしては、
+フレームワークたるJUnitでのインスタンスの生成・消去の管理とJavaが行うインスタンスの生成・除去の管理を分ける意図があるのではと思います。
+
+</p>
+<h2 id="AllTests">大量のテストケースを一括で動かす。</h2>
+<p>IDEがサポートしてくれれば話は別ですが、JUnit単体しかないときにはどうするかという話です。
+やり方としては<code>org.junit.runner.RunWith</code>アノテーションと
+<code>org.junit.runners.Suite.SuiteClasse</code>アノテーションを組み合わせて使います。
+</p>
+<p>
+ここでは例として、</p>
+<ul>
+<li><code>tryjunit4\suite\SampleTest.java</code></li>
+<li><code>tryjunit4\suite\AnotherTest.java</code></li>
+<li><code>tryjunit4\suite\subpack\SubTest.java</code></li>
+</ul><p>
+という、３個のテストケースを一度に実行したいとします。これらにはすでに、
+<code>org.junit.Test</code>アノテーションがつけられたテストメソッドが
+以下のように実装されているとします。
+</p>
+<div class="code">
+<pre class="brush:java;">
+    //SampleTestのテストメソッド例
+    @Test
+    public void testOne() {
+        String str = "りんご";
+        assertEquals(str.charAt(0), 'り');
+        System.out.println("SampleTestのtestOneメソッド");
+    }
+</pre>
+</div>
+<p>
+
+
+これらを以下の図のように纏めたいとします。<br />
+<img src="./classdiagram.png" alt="テストケース構造のクラス図"
+title="テストケース構造のクラス図"/><br />
+そこで、以下のようなクラスを用意し実装します。
+</p>
+<ul>
+<li><code>tryjunit4\suite\AllTests.java</code></li>
+<li><code>tryjunit4\suite\subpack\AllTests.java</code></li>
+</ul>
+
+<div class="code">
+<pre class="brush:java;">
+package tryjunit4.suite;
+
+import org.junit.runner.JUnitCore;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
+import org.junit.runners.Suite.SuiteClasses;
+
+@RunWith(Suite.class)
+@SuiteClasses( { SampleTest.class, AnotherTest.class,
+        tryjunit4.subpack.AllTests.class })
+public class AllTests {
+    public static void main(String[] args) {
+        JUnitCore.main(AllTests.class.getName());
+    }
+}</pre>
+</div>
+&nbsp;
+<div class="code">
+<pre class="brush:java;">package tryjunit4.suite.subpack;
+
+import org.junit.runner.JUnitCore;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
+import org.junit.runners.Suite.SuiteClasses;
+
+@RunWith(Suite.class)
+@SuiteClasses( { SubTest.class })
+public class AllTests {
+    //まとめて実行するという観点からは無意味だが、
+    //一応mainメソッドを用意しておく。
+    public static void main(String[] args) {
+        JUnitCore.main(AllTests.class.getName());
+    }
+}</pre>
+</div>
+<p>実行例は以下のとおりです。（CLASSPATHで、junit4.0.jarが設定されているとする。）</p>
+<pre class="result">
+>java tryjunit4.suite.AllTests
+JUnit version 4.0
+.SampleTestのtestOneメソッド
+.AnotherTestのtestOneしています。
+.AnotherTestのtestTwoしています。
+.SubTestのtestOneしています。
+
+Time: 0
+
+OK (4 tests)
+
+
+>
+</pre>
+<p>
+テストケースクラスに対して<code>org.junit.runner.RunWith</code>アノテーションと
+<code>org.junit.runners.Suite.SuiteClasse</code>アノテーションをつけ、
+含ませるテストケースクラスを指定することで一括実行ができました。
+</p>
+<div class="code">
+<pre class="brush:java;">
+@RunWith(Suite.class)
+@SuiteClasses( { SampleTest.class, AnotherTest.class,
+        tryjunit4.subpack.AllTests.class })
+public class AllTests {
+</pre>
+</div>
+<p>
+これで、テストケースクラスが大量にあっても一回の操作で実行できます。
+ちなみに<code>tryjunit4\suite\AllTests.java</code>内で、全てのテストケースクラスを
+列挙することはしませんでした。パッケージ毎に<code>AllTests.java</code>
+を入れることで、テストケースのグループを小分けにして管理できるようにしたかったからです。
+
+<h2 id="assertThat">assertThatを試す（JUnit4.4以降）</h2>
+
+<p>
+JUnit4.4では、org.junit.Assertクラスに、assertThat()メソッドが追加されました。
+これを使ってテストケースを書いてみます。static importと組みあわせると、
+こんなソースになります。
+
+
+<div class="code">
+<pre class="brush:java;">
+package tryjunit4.v44feature;
+
+import static org.hamcrest.core.AllOf.allOf;
+import static org.hamcrest.core.Is.is;
+import static org.hamcrest.core.IsAnything.anything;
+import static org.hamcrest.core.IsEqual.equalTo;
+import static org.hamcrest.core.IsNot.not;
+import static org.hamcrest.core.IsNull.notNullValue;
+import static org.hamcrest.core.IsNull.nullValue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
+
+import org.junit.Test;
+import org.junit.runner.JUnitCore;
+
+public class AssertThatTest {
+    public static void main(String[] args) {
+        JUnitCore.main(AssertThatTest.class.getName());
+    }
+
+    @Test
+    public void testAssertThat() {
+        assertThat("みかんりんごすいか".substring(3, 6), is("りんご"));
+    }
+
+    @Test
+    public void testAssertEquals() {
+        assertEquals("みかんりんごすいか".substring(3, 6), "りんご");
+    }
+
+    @Test
+    public void testAssertThatTwo() {
+        assertThat("みかんりんごすいか".substring(3, 6), not("いちご"));
+        assertThat("みかんりんごすいか".substring(3, 6), anything());
+        assertThat("みかんりんごすいか".substring(3, 6), equalTo("りんご"));
+        assertThat("みかんりんごすいか".substring(3, 6), notNullValue());
+        String hoge = null;
+        assertThat(hoge, nullValue());
+        assertThat("みかんりんごすいか".substring(3, 6), allOf(equalTo("りんご"),
+                notNullValue()));
+
+    }
+}
+</pre>
+</div>
+<p>
+testAssertThat()メソッドと、testAssertEquals()メソッドの違いに注目ください。
+testAssertEquals()メソッドでは、「メソッド名に述語」「第１引数に主語」「第２引数に目的語」という
+順番にコードの内容が並んでいますが、
+testAssertThat()メソッドでは、「第１引数に主語」「第２引数のメソッド名に述語」
+「第２二引数のパラメータに目的語」の順番にコードの内容が並びます。「主語」「述語」「目的語」です。
+これにより、人（正確には、英語圏の人ですね。）にとって読みやすいテストケースが
+書けるようになります。
+
+<p>
+確かに、私自身も、「実際の値を入れるのは第1引数だっけ？第2引数だっけ？」というような
+迷い方をたまにするので（苦笑）今回の機能追加はありがたいと思います。
+
+</p>
+<p>
+この例の第2引数では、is()メソッドを使いましたが、
+他のメソッドをtestAssertThatTwo()で使ってみました。
+さらにどんなメソッドがあるかはＡＰＩリファレンスを参照してください。
+（ドキュメントによれば、org.junit.matchers.JUnitMatchersというのもあるようです。
+ＡＰＩリファレンスが無いのでソースを読むしかなさそうですね。）
+
+他にも、自前でチェックメソッドを作って拡張できるようです。さらに、
+<a href="http://www.hyuki.com/dp/cat_Decorator.html" >
+Decoratorパターン</a>にも
+なっているようで、論理式のように組み合わせることもできるようです。
+
+</p>
+<p>ちょっと細かい話ですが、
+今回は、
+<div class="code">
+<pre class="brush:java;">
+import static org.hamcrest.core.Is.is;
+</pre>
+</div>
+というメソッドを、static importしてソース例を
+書きましたが、JUnit4.4のリリースノートでは、
+<div class="code">
+<pre class="brush:java;">
+import static org.hamcrest.CoreMatchers.is;
+</pre>
+</div>
+という例を挙げています。前者はJUnit添付のAPIリファレンスに載っていたのでこちらが
+公式APIかな？と最初思っていたのですが、本当はどっちなのかよくわかりません。
+1個にしておいて欲しいのですが。。。
+
+
+
+<h2 id="Assumptions">Assumptionsを試す（JUnit4.4以降）</h2>
+<p>
+JUnit4.4では、org.junit.Assume というクラスが追加されました。
+Assumeは、テストを実施するうえでの前提条件を表明するためのクラスです。
+動作は、org.junit.Assertとほぼ同等（まったく同じＡＰＩではないが、assertThatの機能により
+同等の機能を持つ。）です。</p><p>
+たとえば、こんなソースを書いて動かすと、
+</p>
+<div class="code">
+<pre class="brush:java;">
+package tryjunit4.v44feature;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assume.assumeThat;
+
+import org.junit.Test;
+import org.junit.runner.JUnitCore;
+
+public class AssumeTest {
+
+    public static void main(String[] args) {
+        JUnitCore.main(AssumeTest.class.getName());
+    }
+
+    @Test
+    public void testAssumeOne() {
+        assumeThat("apple", is("orange"));
+        System.err.println("testAssumeOne is success");
+    }
+
+    @Test
+    public void testAssumeTwo() {
+        assumeThat("apple", is("apple"));
+        System.err.println("testAssumeTwo is success");
+    }
+}
+
+</pre>
+</div>
+<p>こういう動きになります。（CLASSPATHで、junit-4.11.jarが設定されているとする。）</p>
+<pre class="result">
+>java tryjunit4.v44feature.AssumeTest
+JUnit version 4.11
+..testAssumeTwo is success
+
+Time: 0.01
+
+OK (2 tests)
+
+>
+</pre>
+
+<p>
+assumeThat()は、assertThat()と同様にテストを行います。
+もしassumeThat()での検証に失敗した場合、JUnitフレームワークはテストメソッドのの残りの
+処理をせずに、テストを成功したものと扱います。ソースでいうと、testAssumeOne()の
+assumeThat("apple", is("orange")); は失敗するのですが、
+その後のコンソール呼び出しが行われていません。
+</p>
+<p>
+Assumeはテストをする上での前提条件をテストするための機能です。
+もしも、前提条件が崩れるのならば、後に続くテストは無意味と判断し
+テスト全体に対して影響を与えないようにテスト成功として扱うという意味になります。
+（私自身の解釈の話なので、本当にこういう意図かとは言い切れませんが。。。）
+たとえば、多様な環境でテストする必要がある場合に、環境依存なテスト
+（ＯＳの種類が絡んでくるテストなど）
+を作りたい場合があるかと思います。そういうときに便利というわけです。
+</p>
+<p>
+別の言い方をすれば、論理演算でいうところの論理包含、いわゆる「ならば」の意味の反映であるとも言えると思います。
+</p>
+<p>
+個人的な意見：
+前提がこけたときはテストは成功扱いなのですが、
+こういう場合どこかに通知する機能が欲しいかなと思います。
+</p>
+
+<h2 id="Theories">Theoriesを試す（JUnit4.4以降）</h2>
+<p>
+JUnit4.4では、ある特定のシナリオ下ではなく、どんな場合でも成立する条件を記述するための
+機能が追加されました。けど、どうもまだドキュメントが十分じゃないようで、
+とりあえずわかったところを書いてみます。
+
+</p>
+<p>たとえば、こんなソースを書くと、</p>
+<div class="code">
+<pre class="brush:java;">
+package tryjunit4.v44feature;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assume.assumeThat;
+
+import org.junit.experimental.theories.methods.api.TestedOn;
+import org.junit.experimental.theories.methods.api.Theory;
+import org.junit.experimental.theories.runner.api.Theories;
+import org.junit.runner.JUnitCore;
+import org.junit.runner.RunWith;
+
+@RunWith(Theories.class)
+public class TheoriesTest {
+
+    public static void main(String[] args) {
+        JUnitCore.main(TheoriesTest.class.getName());
+    }
+
+    @Theory
+    public void multiplyIsInverseOfDivide(@TestedOn(ints = { 0, 5, 10 })
+    int amount, @TestedOn(ints = { 0, 1, 2 })
+    int m) {
+        System.err.println("amount->" + amount + "  m     ->" + m);
+        assumeThat(m, not(0));
+        System.err.println("m は、 " + m + "　です。テストをします。");
+        assertThat((amount * m) / m, is(amount));
+    }
+}
+
+</pre>
+</div>
+<p>こんな結果が出ます。（CLASSPATHで、junit4.4.jarが設定されているとする。）</p>
+
+<pre class="result">
+>java tryjunit4.v44feature.TheoriesTest
+JUnit version 4.4
+.amount->0  m     ->0
+amount->0  m     ->1
+m は、 1　です。テストをします。
+amount->0  m     ->2
+m は、 2　です。テストをします。
+amount->5  m     ->0
+amount->5  m     ->1
+m は、 1　です。テストをします。
+amount->5  m     ->2
+m は、 2　です。テストをします。
+amount->10  m     ->0
+amount->10  m     ->1
+m は、 1　です。テストをします。
+amount->10  m     ->2
+m は、 2　です。テストをします。
+
+Time: 0.14
+
+OK (1 test)
+
+
+>
+</pre>
+<p>
+「定理」ということで、多種多様なパラメータに対して正しく動作することを
+チェックするようなテストが書けます。テストメソッドにパラメータを
+設定することができてテストを繰り返し動作させることができるようですね。
+しかも、パラメータが複数ある場合は、組み合わせを全て網羅してくれます。
+</p>
+<p>
+Theoriesのクラスのパッケージ名から判断すると、この機能はまだ実験的な
+位置づけのようです。しかし、機能そのものは便利だと思います。
+テスト用のサンプルデータをソースコード内でなく、アノテーションという
+別個の場所につけられるというのはフレームワーク内の決め事としては
+適切なものではないでしょうか？
+
+たとえば、<a href="http://www.morijp.com/masarl/homepage3.nifty.com/masarl/article/junit/scenario-based-testcase.html#Scenario%20%83C%83%93%83i%81[%83N%83%89%83X">
+石井さんのページ</a>では、テスト用のデータと、テストのシナリオ（処理の流れ）を分離する
+枠組みが語られていますが、JUnitの枠内でそういうことの決め事が定まれば、
+多くの人が共通した形式のテストを作ったり、メンテナンスするという状況にできると思います。
+
+</p>
+<p>この機能は、AgitorとかJUnitFactoryとかテストケースを自動生成する
+ツール向けという側面もあるようです。今後に期待というところでしょうか。
+</p>
+
+<hr>
+<p>
+<img src="../88x31.png" alt="creative commons BY"/>
+<br>
+この文書は
+<a href="http://creativecommons.org/licenses/by/2.1/jp/">表示 2.1 日本 (CC BY 2.1) </a>
+によってライセンスされます。
+
+</p>
+
+<p><a href="../index.html">トップページに戻る</a></p>
+
+<script type="text/javascript">
+     SyntaxHighlighter.all()
+</script>
+<script type="text/javascript"><!--
+var ID="100620546";
+var AD=4;
+var FRAME=0;
+// --></script>
+<script src="http://j1.ax.xrea.com/l.j?id=100620546" type="text/javascript"></script>
+<noscript>
+<a href="http://w1.ax.xrea.com/c.f?id=100620546" target="_blank"><img src="http://w1.ax.xrea.com/l.f?id=100620546&amp;url=X" alt="AX" border="0"></a>
+</noscript>
+
+
+
+</body>
+</html>

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html prefix="og: http://ogp.me/ns#">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="description" content="Distributing Checksthyle with scoring feature.This is my private build on CheckStyle5.6." >
+
+<meta property="og:title" content="Checkstyle with scoring feature" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://www7b.biglobe.ne.jp/~archer/checkstyle/scorefeature.en.html" />
+<meta property="og:image" content="http://www7b.biglobe.ne.jp/~archer/checkstyle/site/images/logo.png" />
+<meta property="og:description" content="Distributing Checksthyle with scoring feature.This is my private build on CheckStyle5.6.">
+<meta property="og:locale" content="en_US" />
+<meta property="fb:app_id" content="593428597348052" />
+
+
+
+    <script type="text/javascript" src="sh/shCore.js" ></script>
+    <script type="text/javascript" src="sh/shBrushXml.js"></script>
+
+    <link rel="stylesheet" href="sh/shCore.css" type="text/css">
+    <link rel="stylesheet" href="sh/shThemeDefault.css" type="text/css">
+    
+    <title>Checkstyle with scoring feature</title>
+    <script type="text/javascript">
+
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-38403046-6', 'biglobe.ne.jp');
+  ga('send', 'pageview');
+
+</script>
+</head>
+<body>
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) return;
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/ja_JP/all.js#xfbml=1&appId=593428597348052";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+<div style="float:right"><a href="scorefeature.html">JAPANESE</a></div>
+
+<h1>Checkstyle with scoring feature</h1>
+<p>
+Published  : 2013-05-03 <br>
+Last updated : $Date: 2013-10-15 00:52:26 +0900 (Tue, 15 Oct 2013) $
+</p>
+
+<div class="fb-like" data-href="http://www7b.biglobe.ne.jp/~archer/checkstyle/scorefeature.en.html" data-send="false" data-width="450" data-show-faces="false"></div>
+
+
+<hr>
+<h2>Summary</h2>
+<p>
+In this page, I publish private build of <a href="http://checkstyle.sourceforge.net/">Checkstyle</a>.
+I created patch to add new feature because I felt this is needed. 
+I send it to <a href="http://sourceforge.net/p/checkstyle/patches/235/">project page of Checkstyle</a>.
+And more, I will publish private build that applied the patch.<br>
+
+I am very happy if you like it and use it!!
+</p>
+<p>2013-10-15 updated.<br>
+Sorry, this patch is not marged. But I'll keep this page for future use.
+</p>
+
+<h2>Contents</h2>
+<ol>
+<li><a href="#feature">feature description</a></li>
+<li><a href="#distribution">distribution</a></li>
+<li><a href="#settingexample">explain and example</a>
+<ol>
+<li><a href="#simpleSettingFile">setting file for previous version</a></li>
+<li><a href="#scoreForSeverity">setting score for each severity</a></li>
+<li><a href="#scoreForCheck">setting score for each check</a></li>
+<li><a href="#checkWithThreshold">check with the threshold</a></li>
+<li><a href="#cyclomaticComplexity">about CyclomaticComplexity</a></li>
+<li><a href="#chooseScoringLogic">choose scoring logic</a></li>
+</ol>
+</li>
+<li><a href="#resultReport">example of result report</a></li>
+<li><a href="#misc">miscellaneous</a></li>
+</ol>
+
+
+<h2 id="feature">feature description</h2>
+<p>
+In the Checkstyle5.6, violation is represented by 3 leveled severity.
+But this is insufficient in practical use.
+
+For example, if you use <a href="http://checkstyle.sourceforge.net/config_sizes.html#FileLength">FileLengthCheck</a> 
+(check if the java source code have lines > 2000.) , all severity level that you can use is 3 to represent 4 example case below.
+<ul>
+<li>Case 1. The number of line of java source code is 2001.</li>
+<li>Case 2. The number of line of java source code is 2501.</li>
+<li>Case 3. The number of line of java source code is 3001.</li>
+<li>Case 4. The number of line of java source code is 2001.</li>
+</ul>
+
+<p>
+They should be represented by different severity level. Only 3 level is insufficient.
+To represent severity in detail, I added the feature to represent violation by score.
+You can choose the logic to calculate score.
+</p>
+
+
+<h2 id="distribution">distribution</h2>
+
+<ul>
+<li><a href="checkstyle-5.6-scorefeature-src.zip">checkstyle-5.6-scorefeature-src.zip</a></li>
+<li><a href="checkstyle-5.6-scorefeature-src.tar.gz">checkstyle-5.6-scorefeature-src.tar.gz</a></li>
+<li><a href="checkstyle-5.6-scorefeature-bin.zip">checkstyle-5.6-scorefeature-bin.zip</a></li>
+<li><a href="checkstyle-5.6-scorefeature-bin.tar.gz">checkstyle-5.6-scorefeature-bin.tar.gz</a></li>
+</ul>
+
+<p>
+The source code is hosted on github. The repository is here.
+<a href="https://github.com/kazurof/checkstyle-scorefeature">https://github.com/kazurof/checkstyle-scorefeature</a><br />
+
+I added some Document of Checkstyle <br>
+<a href="./site/config.html#Checker">Checker</a> <a href="./site/config.html#Score">Score</a>
+<a href="./site/property_types.html#scoring">scoring</a>
+
+</p>
+
+<h2 id="settingexample">explain and example</h2>
+<p>
+This Checkstyle calculates score for each violation.
+I will show some example of setting file and score calculation.
+</p>
+<h3 id="simpleSettingFile">1.setting file for previous version</h3>
+<div class="code">
+<pre class="brush:xml;">
+
+<module name="Checker">
+    <module name="TreeWalker">
+        <module name="MethodParamPad" >
+            <property name="severity" value="info" ></property>
+        </module>
+        <module name="ModifierOrder" >
+            <property name="severity" value="warning" ></property>
+        </module>
+        <!-- treated as error severity. 'error' is default severity.-->
+        <module name="EmptyBlock" ></module>
+    </module>
+</module>
+</pre>
+</div>
+
+<p>
+In this case, the score is determined by its severity.
+<a href="./site/config_whitespace.html#MethodParamPad">MethodParamPad</a> is 2.
+<a href="./site/config_modifier.html#ModifierOrder">ModifierOrder</a> is 5.
+<a href="./site/config_blocks.html#EmptyBlock">EmptyBlock</a> is 17.
+Those are default score for each severity.
+
+And more, there is 'ignore' severity. But checkstyle does not report this severity. So all severity that we can use is 3 levels.
+The score for 'ignore' is 0.
+</p>
+<p>
+note: This example does not use empty element tag. (a.k.a.&lt;property /&gt;)
+Because <a href="http://alexgorbatchev.com/SyntaxHighlighter">SyntaxHighlighter</a> does not show it beautifully.
+</p>
+
+<h3 id="scoreForSeverity">2.setting score for each severity</h3>
+
+<div class="code">
+<pre class="brush:xml;highlight: [2,3,4]">
+<module name="Checker">
+    <property name="infoScore" value="100"></property>
+    <property name="warningScore" value="200"></property>
+    <property name="errorScore" value="300"></property>
+    <module name="TreeWalker">
+        <module name="MethodParamPad" >
+            <property name="severity" value="info" ></property>
+        </module>
+        <module name="ModifierOrder" >
+            <property name="severity" value="warning" ></property>
+        </module>
+        <!-- treated as error severity. 'error' is default severity.-->
+        <module name="EmptyBlock" ></module>
+    </module>
+</module>
+</pre>
+</div>
+<p>
+You can configure score for each severity. In this case,
+
+<a href="./site/config_whitespace.html#MethodParamPad">MethodParamPad</a> is 100.
+<a href="./site/config_modifier.html#ModifierOrder">ModifierOrder</a> is 200.
+<a href="./site/config_blocks.html#EmptyBlock">EmptyBlock</a> is 300.
+</p>
+
+<h3 id="scoreForCheck">3.setting score for each check</h3>
+
+<div class="code">
+<pre class="brush:xml;highlight: [8]">
+<module name="Checker">
+    <property name="infoScore" value="100"></property>
+    <property name="warningScore" value="200"></property>
+    <property name="errorScore" value="300"></property>
+    <module name="TreeWalker">
+        <module name="MethodParamPad" >
+            <property name="severity" value="info" ></property>
+            <property name="score" value="150"></property>
+        </module>
+    </module>
+</module>
+</pre>
+</div>
+
+<p>
+You can configure score for each check. 
+In this case,
+The severity for <a href="./site/config_whitespace.html#MethodParamPad">MethodParamPad</a> is &apos;info&apos;, but score is 150.
+</p>
+
+<h3 id="checkWithThreshold">4.check with the threshold</h3>
+
+<div class="code">
+<pre class="brush:xml;">
+<module name="Checker">
+    <module name="FileLength" ></module> <!-- sum of severity and violation size-->
+</module>
+
+</pre>
+</div>
+<p>
+Some checks that have threshold (For example , <a href="./site/config_sizes.html#FileLength">FileLength</a>),
+Score is sum of its severity and its violation size. Assume 2100 lines for some Java source code, the score is 117.
+(violation size is 100. score of severity is 17.)
+<br>
+The list below is the check that follows this rule.
+
+</p>
+<ul>
+<li><a href="./site/config_coding.html#NestedForDepth">NestedForDepth</a></li>
+<li><a href="./site/config_coding.html#NestedIfDepth">NestedIfDepth</a></li>
+<li><a href="./site/config_coding.html#NestedTryDepth">NestedTryDepth</a></li>
+<li><a href="./site/config_coding.html#MultipleStringLiterals">MultipleStringLiterals</a></li>
+<li><a href="./site/config_metrics.html#ClassDataAbstractionCoupling">ClassDataAbstractionCoupling</a></li>
+<li><a href="./site/config_metrics.html#ClassFanOutComplexity">ClassFanOutComplexity</a></li>
+<li><a href="./site/config_metrics.html#BooleanExpressionComplexity">BooleanExpressionComplexity</a></li>
+<li><a href="./site/config_metrics.html#JavaNCSS">JavaNCSS</a></li>
+<li><a href="./site/config_sizes.html#AnonInnerLength">AnonInnerLength</a></li>
+<li><a href="./site/config_sizes.html#ExecutableStatementCount">ExecutableStatementCount</a></li>
+<li><a href="./site/config_sizes.html#FileLength">FileLength</a></li>
+<li><a href="./site/config_sizes.html#LineLength">LineLength</a></li>
+<li><a href="./site/config_sizes.html#MethodCount">MethodCount</a></li>
+<li><a href="./site/config_sizes.html#MethodLength">MethodLength</a></li>
+<li><a href="./site/config_sizes.html#OuterTypeNumber">OuterTypeNumber</a></li>
+<li><a href="./site/config_sizes.html#ParameterNumber">ParameterNumber</a></li>
+</ul>
+
+
+<h3 id="cyclomaticComplexity">5.about CyclomaticComplexity</h3>
+
+<div class="code">
+<pre class="brush:xml;">
+<module name="Checker">
+    <module name="CyclomaticComplexity" ></module> <!-- sum of severity and square of violation size-->
+</module>
+
+</pre>
+</div>
+
+<p>
+For <a href="./site/config_metrics.html#CyclomaticComplexity">CyclomaticComplexity</a>, score is sum of its severity and square of its violation size. 
+For example, for the method that its  <a href="./site/config_metrics.html#CyclomaticComplexity">CyclomaticComplexity</a> is 15,
+score is 32. (violation size is 5. 25 is square of 5. severity score is 17. sum is 32.)
+I believe <a href="./site/config_metrics.html#CyclomaticComplexity">CyclomaticComplexity</a> is important index of the readability of a code.
+And it should be evaluated more seriously in the case of a higher value. 
+
+</p>
+
+
+<h3 id="chooseScoringLogic">6.choose scoring logic</h3>
+
+<div class="code">
+<pre class="brush:xml;highlight: [3,7]">
+<module name="Checker">
+    <module name="FileLength" >
+        <property name="scoring" value="severity"></property>
+    </module>
+    <module name="TreeWalker">
+        <module name="CyclomaticComplexity" >
+            <property name="scoring" value="vioration_size"></property>
+        </module>
+    </module>
+</module>
+
+</pre>
+</div>
+
+<p>
+There is some option for the logic to calculate score. In this case,
+<a href="./site/config_sizes.html#FileLength">FileLength</a> uses severity score,
+<a href="./site/config_metrics.html#CyclomaticComplexity">CyclomaticComplexity</a> uses some of severity score and violation size.
+refer <a href="./site/property_types.html#scoring">scoring</a> document for option.
+</p>
+
+
+
+<h2 id="resultReport">example of result report</h2>
+<p>
+I changed xsl file to generate result report (<a href="./contrib/checkstyle-noframes-sorted.xsl">checkstyle-noframes-sorted.xsl</a>) to show score.
+And I generated a <a href="checkstyle_report.html">sample result report</a>. (see linked html)
+
+</p>
+
+<h2 id="misc">miscellaneous</h2>
+
+<p>
+Default score for each severity is info = 2, warning = 5, error = 17. I thogut the value should be prime number because we calculate sum of score foe each file and 
+each total score shoulde be differ.
+It would be allowed info = 1. But I guess it should stick to 2 as prime number! For warning and error, we can disscuss about possibility so that more large number might be better.
+Anyway you can use any number as you like. It is appreciate to test every number to represent the quority of source code.
+</p>
+<hr>
+<p>
+<img src="../88x31.png" alt="creative commons BY"/>
+<br>
+This document is licenced by 
+<a href="http://creativecommons.org/licenses/by/2.1/jp/deed.en">Attribution 2.1 Japan (CC BY 2.1) </a>
+
+
+</p>
+
+<p><a href="../index.html">top page</a></p>
+
+<script type="text/javascript">
+     SyntaxHighlighter.all()
+</script>
+</body>
+</html>

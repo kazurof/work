@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="keywords" content="Apache Forrest" >
+    <meta name="description" content="この文書では、Apache Forrestついて個人的に調べた結果を並べています。" >
+    <link rel="stylesheet" href="./style.css" type="text/css">
+    <title>Apache Forrestの小ネタ</title>
+	
+<link rel="stylesheet" type="text/css" href="./style.css" />
+</head>
+<body>
+<div style="float:right"><a href="forrest.en.html">ENGLISH</a></div>
+<h1>Apache Forrestの小ネタ</h1>
+公開       : 2012-02-24 <br>
+最終更新日 : $Date: 2012-02-25 16:54:25 +0900 (Sat, 25 Feb 2012) $
+<hr>
+<h2>前口上</h2>
+<p>
+この文書では、<a href="http://forrest.apache.org/">Apache Forrest</a>について個人的に調べた結果を並べています。
+この文書は技術的に正確であることを意図して書いてはいますが、どこかで大嘘をついていたり、
+もっと有効な方法があることを見逃していたり、経年により陳腐化しているかもしれません。
+私の理解の最前線を書いているようなものなので必ずしもわかりやすくはないかもしれません。
+</p>
+<h2>目次</h2>
+<ol>
+<li><a href="#env">使っている環境</a></li>
+<li><a href="#bug0.9">Forrest-0.9の障害対応</a></li>
+<li><a href="#link">参考リンク</a></li>
+</ol>
+<h2 id="env">使っている環境</h2>
+
+<ul>
+<li>Apache Forrest 0.9</li>
+<li>Windows XP</li>
+<li>Java 6</li>
+</ul>
+
+<h2 id="bug0.9">Forrest-0.9の障害対応</h2>
+<h3>チュートリアルでの例外</h3>
+<p>最初のチュートリアルである、
+<a href="http://forrest.apache.org/#Explanation+and+features">Explanation and features</a> によれば、
+</p>
+
+<pre class="result">
+>forrest seed
+>forrest
+</pre>
+<p>を、実行しなさいということになっています。しかし
+&gt;forrest の時点で例外のスタックトレースが
+大量に出てきます。
+(参考：<a href="http://mail-archives.apache.org/mod_mbox/forrest-dev/201112.mbox/%3C20111222120436.311B217EB@forrest.zones.apache.org%3E">Forrest のメーリングリスト</a>)
+
+まずこれを何とかします。
+</p>
+
+<pre class="result">
+java.lang.NullPointerException
+        at org.apache.cocoon.environment.AbstractEnvironment.release(AbstractEnvironment.java:563)
+        at org.apache.cocoon.environment.wrapper.MutableEnvironmentFacade.release(MutableEnvironmentFacade.java:314)
+        at org.apache.cocoon.generation.FileGenerator.recycle(FileGenerator.java:64)
+        at org.apache.avalon.excalibur.pool.InstrumentedResourceLimitingPool.put(InstrumentedResourceLimitingPool.java:407)
+        at org.apache.avalon.excalibur.component.PoolableComponentHandler.doPut(PoolableComponentHandler.java:212)
+        at org.apache.avalon.excalibur.component.ComponentHandler.put(ComponentHandler.java:425)
+        at org.apache.avalon.excalibur.component.ExcaliburComponentSelector.release(ExcaliburComponentSelector.java:307)
+        at org.apache.cocoon.components.ExtendedComponentSelector.release(ExtendedComponentSelector.java:301)
+        at org.apache.cocoon.components.pipeline.AbstractProcessingPipeline.recycle(AbstractProcessingPipeline.java:723)
+        at org.apache.cocoon.components.pipeline.impl.BaseCachingProcessingPipeline.recycle(BaseCachingProcessingPipeline.java:78)
+        at org.apache.cocoon.components.pipeline.impl.AbstractCachingProcessingPipeline.recycle(AbstractCachingProcessingPipeline.java:1130)
+        at org.apache.avalon.excalibur.pool.InstrumentedResourceLimitingPool.put(InstrumentedResourceLimitingPool.java:407)
+        at org.apache.avalon.excalibur.component.PoolableComponentHandler.doPut(PoolableComponentHandler.java:212)
+        at org.apache.avalon.excalibur.component.ComponentHandler.put(ComponentHandler.java:425)
+        at org.apache.avalon.excalibur.component.ExcaliburComponentSelector.release(ExcaliburComponentSelector.java:307)
+        at org.apache.cocoon.components.ExtendedComponentSelector.release(ExtendedComponentSelector.java:301)
+        at org.apache.cocoon.components.EnvironmentDescription.release(CocoonComponentManager.java:695)
+        at org.apache.cocoon.components.CocoonComponentManager.endProcessing(CocoonComponentManager.java:262)
+        at org.apache.cocoon.Cocoon.process(Cocoon.java:739)
+        at org.apache.cocoon.bean.CocoonWrapper.getPage(CocoonWrapper.java:514)
+        at org.apache.cocoon.bean.CocoonBean.processTarget(CocoonBean.java:499)
+        at org.apache.cocoon.bean.CocoonBean.process(CocoonBean.java:356)
+        at org.apache.cocoon.Main.main(Main.java:321)
+</pre>
+
+<p>
+手っ取り早く直したい人は、
+この<a href="cocoon-2.1.11-fixed.jar">jarファイル</a>を <code>%FORREST_HOME%\lib\core\</code> 置いてください。
+cocoon.2.1.12-dev.jarは、拡張子を適当に変えてforrestからロードされないようにしてください。
+これで、例外がスローされることなく普通に実行できるようになります。
+</p>
+
+<p>
+疑り深い人向け。
+このjarは、Cocoon2.1.11のソースにちょっと手を入れてビルドすれば作れます。
+</p>
+<ol>
+<li><a href="http://cocoon.apache.org/mirror.cgi">http://cocoon.apache.org/mirror.cgi</a> から、
+cocoon-2.1.11-src.zipをダウンロードする。</li>
+<li>zipをどこか作業フォルダに展開する。</li>
+<li><code>\src\java\org\apache\cocoon\environment\AbstractEnvironment.java</code>
+の562行目付近で、
+nullのチェックを入れる。
+<br>
+<div style="margin-top: 10px;">
+修正前
+</div>
+<pre class="code">
+public void release(final org.apache.excalibur.source.Source source) {
+    if (null != source) {
+        this.sourceResolver.release(source);
+    }
+}
+</pre>
+<div>
+修正後
+</div>
+<pre class="code">
+public void release(final org.apache.excalibur.source.Source source) {
+    if (null != source && this.sourceResolver != null ) {
+        this.sourceResolver.release(source);
+    }
+}
+</pre>
+</li>
+<li>Cocoon に付属しているbuild.batを実行してjarファイルをビルドする。実行にはJDK5が必要のようです。
+Java6ではうまくいきません。ビルドの詳細は<a href="http://cocoon.apache.org/2.1/installing/index.html">
+Installing Apache Cocoon</a>を参考にどうぞ。
+</li>
+</ol>
+<p>
+「こんな修正で大丈夫か？」という向きもあると思いますが、動作優先ということで。
+</p>
+<h3>日本語の文字化け</h3>
+<p>
+>forrest seed が出来たらコンテンツのひな形が出力されます。
+作業フォルダの \src\documentation\content\xdocs 配下のxmlをどんどん編集したいのですが、
+日本語を入力する時はもうひとつ設定が必要です。
+
+</p>
+<p>
+%FORREST_HOME%\main\targets\site.xml 最後のほう（version0.9なら255行目付近）の、
+fixcrlfタスクに、encoding="UTF-8"という属性を追加してください。
+UTF-8としていますが、実際に本文に使うエンコーディングを属性値にする必要があります。
+今時ならばUTF-8で問題ないでしょう。
+これで、文字化けなく普通に >forrest が実行できるようになります。
+</p>
+
+<div class="code"><code>        &lt;fixcrlf srcdir=&quot;${project.site-dir}&quot; encoding=&quot;UTF-8&quot;&gt;  &lt;!-- ここにencoding属性を追加 --&gt;<br>
+          &lt;include name=&quot;**/*.html&quot;/&gt;<br>
+&lt;!-- The CSS Includes are a workaround for FOR-925 --&gt;<br>
+          &lt;include name=&quot;**/*.css&quot;/&gt;<br>
+        &lt;/fixcrlf&gt;</code></div>
+
+
+<p>本文のHTMLは化けなくなりますが、生成されるPDFは化けたままです。（フォントの情報がない？）
+これはまたおいおい調べる予定。
+</p>
+
+<h2 id="link">参考リンク</h2>
+<ul>
+
+<li><a href="http://phinloda.jugem.cc/?eid=264">Apache Forrest のPDF出力で日本語が文字化けする</a></li>
+<li><a href="http://phinloda.jugem.cc/?eid=266">Apache Forrest のPDF出力で日本語が文字化けする (2)</a></li>
+<li><a href="http://sdl.ist.osaka-u.ac.jp/~okano/forrest.html">Forrestのメモ</a></li>
+<li><a href="http://d.hatena.ne.jp/skatworks/20110909/1315591814">skatworksの日記</a>
+なんだかすんなり行っているようで、もしかしてMacだと例外とか文字化けとかはないのかもしれない。？？？
+ </li>
+<li><a href="http://sourceforge.jp/projects/apacheforrestjp/">Apache Forrest日本語プロジェクト</a></li>
+<li><a href="http://dev.ariel-networks.com/Members/nagai/categories/forrest/">Forrest &mdash; ありえるえりあ</a></li>
+
+</ul>
+<hr />
+<p>
+<a rel="license" href="http://creativecommons.org/licenses/by/2.1/jp/">
+<img alt="クリエイティブ・コモンズ・ライセンス" style="border-width:0" src="http://i.creativecommons.org/l/by/2.1/jp/88x31.png" /></a>
+<br />この 作品 は <a rel="license" href="http://creativecommons.org/licenses/by/2.1/jp/">クリエイティブ・コモンズ 表示 2.1 日本 
+ライセンスの下に提供されています。</a><br>
+
+作者: Fukuhara Kazuro.
+</p>
+<p><a href="../index.html">トップページに戻る</a></p>
+
+
+</body>
+</html>

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<meta name="keywords" content="prime number,uram's spiral,honeycomb grid" >
+	<meta name="description" content="drawing prime number sequence on honeycomb grid." >
+	<title>Prime Spiral on Honeycomb Grid</title>
+
+	<script type="text/javascript" src="sylvester.0.1.3.src.js" ></script>
+	<script type="text/javascript" src="jquery-1.7.js" ></script>
+	<link href="style.css" rel="stylesheet" type="text/css" />
+	
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-38403046-4']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+</head>
+<body>
+<div style="float:right"><a href="primespiral.html">JAPANESE</a></div>
+
+<h1>Prime Spiral on Honeycomb Grid</h1>
+<h2>about this page</h2>
+<p>
+According to <a href="http://en.wikipedia.org/wiki/Prime_number">wikipedia</a> and another document,
+ drawing prime number on grid in spiral order,then many of line will appear by 45 slant. 
+I thought what will happen if I draw them on honeycomb (hex) grid?
+I tried to search for internet but not found. That's why I tried to draw it.
+
+<!--
+<a href="http://ja.wikipedia.org/wiki/素数">wikipedia</a>とかその他の情報によると、
+
+ウラムの螺旋というのがありまして、
+素数を４角升に渦巻き状に並べて描くと斜め４５度で直線が浮かんでくるようです。
+では６角升（いわゆるハニカム構造とかヘクスとかいうやつ）に描いたらどうなるか？
+と思ったのですが探してもどうにも見当たりません。それならばと思って検証してみました。
+-->
+</p>
+
+<h2>What do I try to draw?</h2>
+<p>
+In uram&apos;s spiral, numbers are on square grid and filled if it is prime.
+Here I try to set numbers on honeycomb grid and fill some color on prime grid.
+Sorry for dirty image .
+<!--
+
+ウラムの螺旋では、普通の４角升に数字を並べて素数升を塗って行きます。
+ここではハニカム螺旋ということで、６角形の升に素数を渦巻き状に並べて素数升を塗って行きます。
+絵が汚くてすいません。
+-->
+
+<p>
+<img src="explanation.png" />
+
+<h2>image</h2>
+<p>
+The red point at the center is the starting point.This is 0.
+The right-up is 2. left to 2 is 3. left-bottom of 0 is 5.
+I draw it until 10000.
+
+Clicking this image , you will see large image. (2000*2000. up to 100000)
+
+<!--
+中心にある赤い点が原点です。ここを0としています。
+その右上が2。2の左が3。0の左下が5です。10000を上限に描いてみました。
+
+
+画像をクリックすると、もっと大きな画像が表示されます。
+(画像サイズ　2000　x　2000。　100000を上限に描いてみました。)
+-->
+
+<br>
+I thought this image will divided to 6 area. but the line appear in three area,  bottom and bottom-right area and
+up and up-right and left-up and left-bottom. There might be some rule, isn't it?
+<!--
+全体が６個に区分けされる、、、かと思ったら、原点の下と右下、上と右上、左上と左下の3グループで
+直線が現れているようです。やはり何か規則性があるのでしょうか？
+-->
+</p>
+<a href="primespiral-large.png">
+<img src="primespiral-zoom.png" class="spiralImage" alt="prime spiral on honeycomb"/>
+</a>
+
+<h2>Draw on browser</h2>
+<p>
+I thought it is interesting if you can see drawing image.Here Javascript draw it.
+Please browse this page by newer modern browser because of HTML5 and canvas.
+<!--
+線が描かれているところが見えると面白いかな？ということで、
+JavaScriptで描いてみました。HTML5とかCanvasとか使っていますので、
+新しめのブラウザでご覧になってください。
+-->
+</p>
+
+<input type="button" value="start" id="startOrPause"/>
+<input type="button" value="clear" id="reset"/><br>
+<canvas id="canvassample" width="500" height="500"></canvas>
+
+
+<h2>Animation in reverse order</h2>
+<p>
+Prime numbers are drawn from the center starting with 2 in previous image. 
+Here I created the animation the prime sequence grows as spiral from the center.
+It sounds like to have long time by JavaScript, I create movie .
+How about this rounding like movie?
+
+<!--
+いままでは原点を中心に２から素数を並べていくわけですが、
+原点から素数の列が螺旋状に伸びて行くようなアニメーションを作ってみました。
+JavaScriptで描いたらさすがに重そうなので、動画ファイルにしました。
+にょろにょろどうでしょう。
+-->
+
+</p>
+<div class="movie">
+<iframe width="640" height="360" src="http://www.youtube.com/embed/0OGoHDb9HKo?rel=0" frameborder="0" allowfullscreen></iframe>
+</div>
+<p>
+
+It is very interesting to appear slant line in bottom and right-bottom area.
+(I believe this calculation is correct...)
+<!--
+原点の下と右下には斜めの線がたくさん出てくるようで、なかなか不思議です。
+（さすがに計算間違いは無いと思うのですが、、、）
+-->
+
+</p>
+
+<h2>Another more good idea?</h2>
+<ul>
+<li>
+There is many kind of primes.I might be good if change the color as its type.
+(Mersenne prime, Euler prime number, Fermat prime number )
+<!--
+素数には色々な種類分けがありますので、種類ごとに色を分けて描いても面白いと思います。
+-->
+
+</li>
+<li>
+Centered one grid, I draw number sequence as rounding. But It may be interesting to draw
+sequence after thee grid arranged  and surrounding the three grids.
+See image.
+
+<!--
+升１個を中心に外周を回るように数字を並べたわけですが、升３個を１直線に並べてその外周を回るように
+数字を並べるとどうなるか描いてみるのも面白いかもしれません。こんな感じです。
+-->
+<br>
+<img src="nextidea.png" class="nextideaimage"/><br>
+And more, start after four grids and surrounding , or start with more complex structure might became
+interesting image.
+<!--
+ほかにも４個並べて外周、とか、もっと複雑な形からスタートすると面白い図になるかもしれません。
+-->
+</li>
+<li>
+It may be interesting to draw on triangle grid.
+<!--
+３角升に描いたらどうなるかというのも面白いかもしれません。
+-->
+
+<br>
+<img src="tri.png" class="nextideaimage"/><br>
+</li>
+</ul>
+<p>
+I guess this research is good for the subject of the summer vacation of high school student.
+(but it may be needed to find some good or useful truth... not just for fun?)
+It is very hard for me to continue this!!
+<!--
+ここまでやって思ったのですが、プログラミングができる高校生の夏休みの課題とか
+文化祭の発表ネタに使えそうな気がしてきました。描いてみただけでなく、なんか有用とかおもしろい
+事を引き出せないとまずそうですが。忙しいサラリーマンにはこれが精一杯です勘弁してください。
+-->
+</p>
+
+<h2>Source code to generate image for programmer</h2>
+You can check and see JavaScript code from this html source code of this page.
+And <a href="./prime.zip">Java program to draw this</a> is available.
+NO WARRANTIES.
+<!--
+
+JavaScriptについてはこのページのソースからたどってみてください。
+<a href="./prime.zip">画像をつくったプログラム(Java)</a>も、
+よろしければどうぞ。
+どちらにせよソースは無保証無責任です。
+-->
+
+<hr>
+<p>
+This document is licenced by 
+<a href="http://creativecommons.org/licenses/by/2.1/jp/deed.en">Attribution 2.1 Japan (CC BY 2.1) </a>
+
+<img src="../88x31.png" alt="creative commons BY"/>
+</p>
+<p>
+Published    : 2011-12-04 <br>
+Last updated : $Date: 2013-03-01 23:48:55 +0900 (Fri, 01 Mar 2013) $
+</p>
+<p><a href="../index.html">top page</a></p>
+
+
+	<script type="text/javascript" src="prime.json.js" ></script>
+	<script type="text/javascript" src="draw.js" ></script>
+</body>
+</html>

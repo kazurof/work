@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<meta name="keywords" content="素数,ウラムの螺旋,ハニカム構造" >
+	<meta name="description" content="素数をハニカム構造の升目に並べて描いてみました。" >
+	<title>素数のハニカム螺旋</title>
+
+	<script type="text/javascript" src="sylvester.0.1.3.src.js" ></script>
+	<script type="text/javascript" src="jquery-1.7.js" ></script>
+	<link href="style.css" rel="stylesheet" type="text/css" />
+	
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-38403046-3']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+</head>
+<body>
+<div style="float:right"><a href="primespiral.en.html">ENGLISH</a></div>
+<h1>素数のハニカム螺旋</h1>
+<h2>前口上</h2>
+<p><a href="http://ja.wikipedia.org/wiki/素数">wikipedia</a>とかその他の情報によると、
+ウラムの螺旋というのがありまして、
+素数を４角升に渦巻き状に並べて描くと斜め４５度で直線が浮かんでくるようです。
+では６角升（いわゆるハニカム構造とかヘクスとかいうやつ）に描いたらどうなるか？
+と思ったのですが探してもどうにも見当たりません。それならばと思って検証してみました。
+
+</p>
+
+<h2>そもそも何を描こうとしているのか？</h2>
+<p>
+ウラムの螺旋では、普通の４角升に数字を並べて素数升を塗って行きます。
+ここではハニカム螺旋ということで、６角形の升に素数を渦巻き状に並べて素数升を塗って行きます。
+絵が汚くてすいません。
+<p>
+<img src="explanation.png" />
+
+<h2>とりあえず描いてみた</h2>
+<p>
+中心にある赤い点が原点です。ここを0としています。
+その右上が2。2の左が3。0の左下が5です。10000を上限に描いてみました。
+
+画像をクリックすると、もっと大きな画像が表示されます。
+(画像サイズ　2000　x　2000。　100000を上限に描いてみました。)
+
+
+<br>
+
+全体が６個に区分けされる、、、かと思ったら、原点の下と右下、上と右上、左上と左下の3グループで
+直線が現れているようです。やはり何か規則性があるのでしょうか？
+</p>
+<a href="primespiral-large.png">
+<img src="primespiral-zoom.png" class="spiralImage" alt="prime spiral on honeycomb"/>
+</a>
+
+<h2>ブラウザ上での描画</h2>
+<p>
+線が描かれているところが見えると面白いかな？ということで、
+JavaScriptで描いてみました。HTML5とかCanvasとか使っていますので、
+新しめのブラウザでご覧になってください。
+
+</p>
+
+<input type="button" value="start" id="startOrPause"/>
+<input type="button" value="clear" id="reset"/><br>
+<canvas id="canvassample" width="500" height="500"></canvas>
+
+
+<h2>逆に並べてアニメーション</h2>
+<p>
+いままでは原点を中心に２から素数を並べていくわけですが、
+原点から素数の列が螺旋状に伸びて行くようなアニメーションを作ってみました。
+JavaScriptで描いたらさすがに重そうなので、動画ファイルにしました。
+にょろにょろどうでしょう。
+</p>
+<div class="movie">
+<iframe width="640" height="360" src="http://www.youtube.com/embed/0OGoHDb9HKo?rel=0" frameborder="0" allowfullscreen></iframe>
+</div>
+<p>
+原点の下と右下には斜めの線がたくさん出てくるようで、なかなか不思議です。
+（さすがに計算間違いは無いと思うのですが、、、）
+</p>
+
+<h2>もっと面白いアイデアないか？</h2>
+<ul>
+<li>
+素数には色々な種類分けがありますので、種類ごとに色を分けて描いても面白いと思います。
+（メルセンヌの素数、オイラー素数、フェルマー素数など）
+</li>
+<li>
+升１個を中心に外周を回るように数字を並べたわけですが、升３個を１直線に並べてその外周を回るように
+数字を並べるとどうなるか描いてみるのも面白いかもしれません。こんな感じです。<br>
+<img src="nextidea.png" class="nextideaimage"/><br>
+ほかにも４個並べて外周、とか、もっと複雑な形からスタートすると面白い図になるかもしれません。
+</li>
+<li>
+３角升に描いたらどうなるかというのも面白いかもしれません。
+<br>
+<img src="tri.png" class="nextideaimage"/><br>
+</li>
+</ul>
+<p>
+ここまでやって思ったのですが、プログラミングができる高校生の夏休みの課題とか
+文化祭の発表ネタに使えそうな気がしてきました。描いてみただけでなく、なんか有用とかおもしろい
+事を引き出せないとまずそうですが。忙しいサラリーマンにはこれが精一杯です勘弁してください。
+</p>
+
+<h2>描画に使ったソースとか(プログラムが書ける人向け)</h2>
+JavaScriptについてはこのページのソースからたどってみてください。
+<a href="./prime.zip">画像をつくったプログラム(Java)</a>も、
+よろしければどうぞ。
+どちらにせよソースは無保証無責任です。
+
+
+<hr>
+<p>
+この文書は
+<a href="http://creativecommons.org/licenses/by/2.1/jp/">表示 2.1 日本 (CC BY 2.1) </a>
+によってライセンスされます。
+
+<img src="../88x31.png" alt="creative commons BY"/>
+</p>
+<p>
+
+公開日:2011-12-04 <br>
+更新日:$Date: 2013-03-01 23:42:03 +0900 (Fri, 01 Mar 2013) $
+
+</p>
+<p><a href="../index.html">トップページに戻る</a></p>
+
+	<script type="text/javascript" src="prime.json.js" ></script>
+	<script type="text/javascript" src="draw.js" ></script>
+
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html prefix="og: http://ogp.me/ns#">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="description" content="publishing private build of UrlRewriteFilter that solve Issue 120." >
+
+
+<meta property="og:title" content="Fix issue 120 in UrlRewriteFilter" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://www7b.biglobe.ne.jp/~archer/urlrewritefilter/issue120.en.html" />
+<meta property="og:description" content="publishing private build of UrlRewriteFilter that solve Issue 120.">
+<meta property="og:locale" content="en" />
+<meta property="fb:app_id" content="593428597348052" />
+
+
+
+    <script type="text/javascript" src="sh/shCore.js" ></script>
+    <script type="text/javascript" src="sh/shBrushXml.js"></script>
+
+    <link rel="stylesheet" href="sh/shCore.css" type="text/css">
+    <link rel="stylesheet" href="sh/shThemeDefault.css" type="text/css">
+    
+    
+    <title>Fix issue 120 in UrlRewriteFilter</title>
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-38403046-8', 'biglobe.ne.jp');
+  ga('send', 'pageview');
+
+</script>
+</head>
+<body>
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) return;
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/ja_JP/all.js#xfbml=1&appId=593428597348052";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+<div style="float:right"><a href="issue120.html">JAPANESE</a></div>
+<h1>Fix issue 120 in UrlRewriteFilter</h1>
+<p>
+published  : 2013-10-26 <br>
+updated : $Date: 2013-11-16 23:36:15 +0900 (Sat, 16 Nov 2013) $
+</p>
+
+<hr>
+<h2>summary</h2>
+<p>
+According to <a href="https://code.google.com/p/urlrewritefilter/issues/detail?id=120">Issue120</a> in 
+<a href="http://www.tuckey.org/urlrewrite/">UrlRewriteFilter</a>, It does not work properly if you set 2 or more sequential function.
+So, I fixed it. I have send <a href="https://code.google.com/p/urlrewritefilter/issues/detail?id=120#c4">the patch</a> to project already. And I'll publish the patch and compiled jar in this page.
+Anyone who is annoyed by this issue, I hope you check it.
+</p>
+
+<h2 id="distribution">distribution</h2>
+
+<dl>
+<dt>fixed UrlRewriteFilter itself</dt>
+<dd><a href="urlrewritefilter-4.0.5-SNAPSHOT.jar">urlrewritefilter-4.0.5-SNAPSHOT.jar</a></dd>
+<dt>the patch that I send to the project.</dt>
+<dd><a href="patch-Issue120-fixed.txt">patch-Issue120-fixed.txt</a></dd>
+</dl>
+
+<p>
+I created <a href="patch-Issue120-fixed.txt">patch-Issue120-fixed.txt</a> by executing <code>svn diff &gt; patch.txt</code> after code fixed and tested.
+If you hope, you can check modification after you get all code of urlrewritefilter and apply this patch.
+Refer the url below to see all code of UrlRewriteFilter<br>
+<a href="https://code.google.com/p/urlrewritefilter/source/checkout">https://code.google.com/p/urlrewritefilter/source/checkout</a>
+</p>
+
+
+
+<h2 id="whatis">What is UrlRewriteFilter</h2>
+<p>
+<a href="http://www.tuckey.org/urlrewrite/">UrlRewriteFilter</a> is the library. 
+You can make application treats request of a url as the request of another url.
+This library will rewrite url and pass it to application.
+You can serve freely designed beautiful url and use default url pattern of web framework (Apache Struts and so on) which is not so beautiful.
+For example, suppose you want to publish the url below.
+</p>
+<blockquote>http://example.org/repo/data/123/foobarbaz</blockquote>
+<p>But, the framework might have url just like below</p>
+<blockquote>http://example.org/repo/data/get.do&amp;id=123</blockquote>
+
+<p>In case of this, UrlRewriteFilter is useful. Because this rewrites url just like this.</p>
+
+
+<h2 id="feature">What this patch do.</h2>
+<p>
+According to <a href="https://code.google.com/p/urlrewritefilter/issues/detail?id=120">Issue120</a>,
+if <a href="http://urlrewritefilter.googlecode.com/svn/trunk/src/doc/manual/4.0/index.html#functions">Function</a> in <code>&lt;to&gt;</code> element 
+is sequential, it does not work properly. For Example, 
+</p>
+<div class="code">
+<pre class="brush:xml">
+   <to type="redirect">/test/${upper:$1}/${upper:$1}.html</to>
+</pre>
+</div>
+<p>With this setting, open curly bracket and end curly bracket does not parsed correctly.(This is treated as containts only one function. 
+outside &quot;${&quot; and &quot;}&quot; will be treated as one function.) This patch will solve this situation. 
+Even if many function is used , sequentially or nested, This will work fine and as you expected.
+</p>
+<h2>Presentation at #渋谷java 4th.(#shibuya-Java 4th.)</h2>
+
+<p>
+The slide below is presentation about this patch in #shibuya-Java 4th. In Japanese.
+</p>
+
+<iframe src="http://www.slideshare.net/slideshow/embed_code/28311861" width="512" height="421" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="border:1px solid #CCC;border-width:1px 1px 0;margin-bottom:5px" allowfullscreen> </iframe> <div style="margin-bottom:5px"> <strong> <a href="https://www.slideshare.net/kazurof/urlrewritefilterissue120" title="UrlRewriteFilterに手を入れてみた" target="_blank">UrlRewriteFilterに手を入れてみた</a> </strong> from <strong><a href="http://www.slideshare.net/kazurof" target="_blank">Kazuro Fukuhara</a></strong> </div>
+
+
+
+<hr>
+<p>
+<img src="../88x31.png" alt="creative commons BY"/>
+<br>
+This document is licenced by
+<a href="http://creativecommons.org/licenses/by/2.1/jp/"> Attribution 2.1 Japan (CC BY 2.1) </a>
+
+</p>
+
+<p><a href="../index.html">top page</a></p>
+
+<script type="text/javascript">
+     SyntaxHighlighter.all()
+</script>
+
+</body>
+</html>

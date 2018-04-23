@@ -1,0 +1,31 @@
+@CHARSET "UTF-8";
+
+
+
+h2 {
+border-left: 20px solid #0A6ECE;
+   padding-left: 10px;
+border-bottom: 2px dotted #0A6ECE;
+}
+
+
+h3 {
+border-left: 10px solid #0A6ECE;
+   padding-left: 10px;
+/*border-bottom: 2px dotted #0A6ECE;*/
+}
+
+div.code ,
+pre.code{
+	border: dashed gray 1px;
+	font-size:medium;
+	BACKGROUND: #F8F8FF;
+	PADDING: 4px;
+}
+
+pre.result{
+	font-size:medium;
+	color:#FFFFFF;
+	BACKGROUND:#330099;
+	PADDING: 4px;
+}

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html prefix="og: http://ogp.me/ns#">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="description" content="UrlRewriteFilter の Issue120によると、関数が連続した形ではうまく動作しないようです。これを修正してみました。" >
+
+
+<meta property="og:title" content="UrlRewriteFilterのIssue120を修正してみた" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://www7b.biglobe.ne.jp/~archer/urlrewritefilter/issue120.html" />
+<meta property="og:description" content="UrlRewriteFilter の Issue120によると、関数が連続した形ではうまく動作しないようです。これを修正してみました。">
+<meta property="og:locale" content="ja_JP" />
+<meta property="fb:app_id" content="593428597348052" />
+
+
+
+    <script type="text/javascript" src="sh/shCore.js" ></script>
+    <script type="text/javascript" src="sh/shBrushXml.js"></script>
+
+    <link rel="stylesheet" href="sh/shCore.css" type="text/css">
+    <link rel="stylesheet" href="sh/shThemeDefault.css" type="text/css">
+    
+    
+    <title>UrlRewriteFilterのIssue120を修正してみた</title>
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-38403046-7', 'biglobe.ne.jp');
+  ga('send', 'pageview');
+
+</script>
+</head>
+<body>
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) return;
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/ja_JP/all.js#xfbml=1&appId=593428597348052";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+<div style="float:right"><a href="issue120.en.html">ENGLISH</a></div>
+<h1>UrlRewriteFilterのIssue120を修正してみた</h1>
+<p>
+公開日  : 2013-10-26 <br>
+更新日 : $Date: 2013-11-16 23:36:15 +0900 (Sat, 16 Nov 2013) $
+</p>
+
+<hr>
+<h2>概要</h2>
+<p>
+<a href="http://www.tuckey.org/urlrewrite/">UrlRewriteFilter</a> の <a href="https://code.google.com/p/urlrewritefilter/issues/detail?id=120">Issue120</a> によると、
+<a href="http://urlrewritefilter.googlecode.com/svn/trunk/src/doc/manual/4.0/index.html#functions">関数</a>が連続した形ではうまく動作しないようです。そこでこれを修正してみました。
+<a href="https://code.google.com/p/urlrewritefilter/issues/detail?id=120#c4">パッチは本家に送った</a>のですがここでも公開してみます。この件でお困りの方、どうでしょうか。
+</p>
+
+<h2 id="distribution">配布物</h2>
+
+<dl>
+<dt>修正を行って作成したurlrewritefilter本体</dt>
+<dd><a href="urlrewritefilter-4.0.5-SNAPSHOT.jar">urlrewritefilter-4.0.5-SNAPSHOT.jar</a></dd>
+<dt>提供したパッチそのもの</dt>
+<dd><a href="patch-Issue120-fixed.txt">patch-Issue120-fixed.txt</a></dd>
+</dl>
+<p>
+patch-Issue120-fixed.txt は、ソースの修正後 <code>svn diff &gt; patch.txt</code> などと実行して作成しました。
+興味のある方はurlrewritefilter本体のソースを入手し、このパッチを適用すると変更内容が確認できます。
+本体のソースについては以下のURLをご参照下さい。<br>
+<a href="https://code.google.com/p/urlrewritefilter/source/checkout">https://code.google.com/p/urlrewritefilter/source/checkout</a>
+</p>
+
+
+
+<h2 id="whatis">そもそもUrlRewriteFilterとはなにか。</h2>
+<p>
+<a href="http://www.tuckey.org/urlrewrite/">UrlRewriteFilter</a> は外向けに綺麗なURLを公開し、
+内側では異なるURLへのアクセスとして処理させることを可能にするライブラリです。
+外に提供しているURLを内側向けのURLへリクエストのURLを書き換えてアプリケーションに引き渡します。
+外向けには自由に設計された綺麗なURLを提供し、内部では自由度の高くないフレームワークの設計に沿ったURLをそのまま使う事ができます。
+
+例えば、外向けには以下の様なURLを提示したいとします。
+</p>
+<blockquote>http://example.org/repo/data/123/なんとかかんとか</blockquote>
+<p>しかし、フレームワークは以下の様なURLを基本的な形として持っているとします。</p>
+<blockquote>http://example.org/repo/data/get.do&amp;id=123</blockquote>
+
+<p>このような場合UrlRewriteFilterが役に立ちます。UrlRewriteFilterはこのような変換を行うのです。</p>
+
+
+<h2 id="feature">この修正で何ができるようになったか。</h2>
+<p>
+<a href="https://code.google.com/p/urlrewritefilter/issues/detail?id=120">Issue120</a>によると、<code>&lt;to&gt;</code>要素内の
+<a href="http://urlrewritefilter.googlecode.com/svn/trunk/src/doc/manual/4.0/index.html#functions">関数</a>が複数連続していると、
+正しく処理できないという障害が報告されています。
+つまり
+</p>
+<div class="code">
+<pre class="brush:xml">
+   <to type="redirect">/test/${upper:$1}/${upper:$1}.html</to>
+</pre>
+</div>
+<p>のような指定は括弧の開始と終了が正しく解釈されません。(関数は設定されているが、実際は外側の${ } で１個の関数だけだと解釈される)
+しかしこの修正でこの障害が解決されます。関数が複数連続で使われていても入れ子になっていても正しく動作します。
+</p>
+<h2>第四回 #渋谷javaでの発表</h2>
+
+<p>
+本パッチについて、<a href="http://connpass.com/event/3744/">第四回 #渋谷java</a>にて発表を行いました。その発表資料です。
+</p>
+
+<iframe src="http://www.slideshare.net/slideshow/embed_code/28311861" width="512" height="421" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="border:1px solid #CCC;border-width:1px 1px 0;margin-bottom:5px" allowfullscreen> </iframe> <div style="margin-bottom:5px"> <strong> <a href="https://www.slideshare.net/kazurof/urlrewritefilterissue120" title="UrlRewriteFilterに手を入れてみた" target="_blank">UrlRewriteFilterに手を入れてみた</a> </strong> from <strong><a href="http://www.slideshare.net/kazurof" target="_blank">Kazuro Fukuhara</a></strong> </div>
+
+
+
+<hr>
+<p>
+<img src="../88x31.png" alt="creative commons BY"/>
+<br>
+この文書は
+<a href="http://creativecommons.org/licenses/by/2.1/jp/">表示 2.1 日本 (CC BY 2.1) </a>
+によってライセンスされます。
+
+</p>
+
+<p><a href="../index.html">トップページに戻る</a></p>
+
+<script type="text/javascript">
+     SyntaxHighlighter.all()
+</script>
+
+</body>
+</html>

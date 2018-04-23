@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="keywords" content="JUnit4,JUnit,JUnit API" >
+    <meta name="description" content="この文書では、JUnit4についてもっと動かしてみた結果をまとめています。JUnit 4.12-SNAPSHOT のjavadoc, Parameterized, Categories, JUnit API" >
+
+    <script type="text/javascript" src="shscripts/shCore.js" ></script>
+    <script type="text/javascript" src="shscripts/shBrushJava.js"></script>
+    
+    <link rel="stylesheet" href="./style.css" type="text/css">
+    <link rel="stylesheet" href="shstyles/shCore.css" type="text/css">
+    <link rel="stylesheet" href="shstyles/shThemeDefault.css" type="text/css">
+    <title>JUnit4をもっとやってみよう</title>
+
+
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-38403046-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+</head>
+<body>
+<h1>JUnit4をもっとやってみよう</h1>
+公開日 : 2013-11-09 <br>
+最終更新日 : $Date: 2013-12-19 01:22:44 +0900 (Thu, 19 Dec 2013) $
+<hr>
+<h2>要約</h2>
+<p>この文書は、<a href="tryjunit4.html">JUnit4をやってみよう</a>の続きです。<a href="http://junit.org/">JUnit4</a>
+について動かしてみた結果をまとめています。
+この文書は技術的に正確であることを意図して書いてはいますが、どこかで大嘘をついていたり、経年により陳腐化しているかもしれません。
+もっと有効な方法があることを見逃しているかもしれません。<br>
+姉妹ページ、<a href="tryjunit4.html">JUnit4をやってみよう</a>、<a href="tryjunit4Rules.html">JUnit4をやってみよう(Rules編)</a>もどうぞ。<br>
+サンプルソースは<a href="https://github.com/kazurof/tryjunit4">https://github.com/kazurof/tryjunit4</a> においてあります。
+</p>
+<h2>目次</h2>
+<ol>
+<li><a href="#apidoc">JUnit4.12-SNAPSHOTのAPIリファレンス</a></li>
+<li><a href="#parameterized">Parameterizedを試す</a>
+<ol>
+<li><a href="#simpleExample">素朴な例</a></li>
+<li><a href="#omitConstructor">コンストラクタの省略</a></li>
+<li><a href="#customizeTestName">テスト名のカスタマイズ</a></li>
+<li><a href="#hierarchy">テストの階層化</a></li>
+</ol>
+</li>
+<li><a href="#categories">Categoriesを試す</a></li>
+</ol>
+
+
+<h2 id="apidoc">JUnit4.12-SNAPSHOTのAPIリファレンス</h2>
+
+<p>
+<a href="apidocs/index.html">APIリファレンスはこちらです。</a><br>
+JUnit 4.12 自前ビルド版リファレンスマニュアルです。 2013年12月14日 10:31:04 のコミットからビルドしました。
+</p>
+<p>
+経緯：<a href="https://github.com/downloads/junit-team/junit/junit4.11.zip">junit4.11.zip</a> 同梱のAPIリファレンス(javadoc)は、CSSが壊れているようです。
+また、<a href="http://junit.org/javadoc/latest/index.html">latestのAPI</a>は、JUnit4.10をベースにしているようです。
+（<a href="http://junit.org/javadoc/4.10/">4.10のAPI</a>と比較した。）
+察するに 4.11からJava7でビルドしたけれど自前で作っている従前のJUnit固有のCSS（見出し背景を緑色にしているもの）がJava7の構造に合ってないようです。
+色はともかく読みにくいのは不便なので、JUnit固有CSSを外してAPIリファレンスをビルドしてみました。
+</p>
+
+<h2 id="parameterized">Parameterizedを試す</h2>
+<p>
+テスト対象の1つのメソッドに多様なパラメータを与えてテストしたい場合があります。例えば境界条件付近での挙動をテストする時です。
+Parameterizedは、このようなテストの作成をサポートします。
+</p>
+<h3 id="simpleExample">素朴な例</h3>
+<div class="code">
+<pre class="brush:java;highlight: [12,18,19];">
+package tryjunit4.parameterized;
+
+import static org.junit.Assert.assertEquals;
+import java.util.Arrays;
+
+import org.junit.Test;
+import org.junit.runner.JUnitCore;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+
+@RunWith(Parameterized.class)
+public class ParameterizedTest {
+	public static void main(String[] args) {
+		JUnitCore.main(ParameterizedTest.class.getName());
+	}
+
+	@Parameters
+	public static Iterable&lt;Object[]> data() {
+		return Arrays.asList(new Object[][] { { 1, 1 }, { -2, 2 }, { 3, 3 }, { -4, 4 } });
+	}
+
+	private int fInput;
+
+	private int fExpected;
+
+	public ParameterizedTest(int input, int expected) {
+		System.out.printf("I am constructor.  input ->  %d ,expected ->  %d %n", input, expected);
+		fInput = input;
+		fExpected = expected;
+	}
+
+	@Test
+	public void testNantoka() {
+		System.out.printf("I am testNantoka.  fInput ->  %d ,fExpected ->  %d %n%n", fInput, fExpected);
+		assertEquals(fExpected, Math.abs(fInput));
+	}
+
+}
+</pre>
+</div>
+
+<p>実行結果（CLASSPATHで、junit4.11.jarが設定されているとする。）</p>
+
+<pre class="result">
+$ java tryjunit4.parameterized.ParameterizedTest
+JUnit version 4.11
+I am constructor.  input ->  1 ,expected ->  1 
+.I am testNantoka.  fInput ->  1 ,fExpected ->  1 
+
+I am constructor.  input ->  -2 ,expected ->  2 
+.I am testNantoka.  fInput ->  -2 ,fExpected ->  2 
+
+I am constructor.  input ->  3 ,expected ->  3 
+.I am testNantoka.  fInput ->  3 ,fExpected ->  3 
+
+I am constructor.  input ->  -4 ,expected ->  4 
+.I am testNantoka.  fInput ->  -4 ,fExpected ->  4 
+
+
+Time: 0.01
+
+OK (4 tests)
+
+$ 
+</pre>
+<p>
+通常では <code>@Test</code>アノテーションが付与されている<code>testNantoka()</code>メソッドが1回だけ実行されます。しかしこのソースの場合
+<code>Parameterized.class</code>が12行目で付与されているので異なる動作になります。JUnitはまず
+<code>@Parameters</code>アノテーションが付いているメソッド(19行目)からテストデータを取得します。
+<code>Iterable&lt;Object[]></code>と言うのは見慣れないかも知れませんが、いわゆる2次元配列のような形になります。
+</p>
+<p>
+JUnitはこのIterableから取得できるObject[] を1個のテストデータの塊とみなし、それぞれの値をコンストラクタに引き渡します。
+ちなみにObject[] の長さとコンストラクタのパラメータの数が異なる場合は例外がスローされテスト失敗となります。
+コンストラクタが終了した後、テストメソッドが実行されます。このメソッド内でフィールドの値を使ったテストが可能というわけです。
+</p>
+<p>
+結果、テストメソッドの実行回数はIterableの長さと同じになります。テスト対象メソッドに多数のテストデータを適用してテストが実行できるわけです。
+</p>
+<h3 id="omitConstructor">コンストラクタの省略</h3>
+
+<p>
+フィールドを初期化するだけのコンストラクタを書くのはめんどくさいという向きには、コンストラクタを書かないやり方もあります。
+ついでに、テスト名の取得に<a href="tryjunit4Rules.html#TestName">TestName</a>を使ってみました。
+</p>
+<div class="code">
+<pre class="brush:java;highlight: [30,37];">
+package tryjunit4.parameterized;
+
+import static org.junit.Assert.assertEquals;
+
+import java.util.Arrays;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TestName;
+import org.junit.runner.JUnitCore;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
+
+@RunWith(Parameterized.class)
+public class NoConstructorTest {
+	public static void main(String[] args) {
+		JUnitCore.main(NoConstructorTest.class.getName());
+	}
+
+	@Rule
+	public TestName name = new TestName();
+
+	@Parameters
+	public static Iterable&lt;Object[]> data() {
+		return Arrays.asList(new Object[][] { { 1, 1 }, { -2, 2 } });
+	}
+
+	@Parameter
+	public int fInput;
+	@Parameter(1) // need specify test data array index if it is not 0.
+	public int fExpected;
+
+	@Test
+	public void testNantoka() {
+		System.out.printf("MethodName --%s-- %n", name.getMethodName());
+		assertEquals(fExpected, Math.abs(fInput));
+	}
+}
+
+
+</pre>
+</div>
+<p>実行結果</p>
+
+<pre class="result">
+$ java tryjunit4.parameterized.NoConstructorTest
+JUnit version 4.11
+.MethodName --testNantoka[0]-- 
+.MethodName --testNantoka[1]-- 
+
+Time: 0.01
+
+OK (2 tests)
+
+$ 
+</pre>
+</div>
+<p>
+<a href="./apidocs/org/junit/runners/Parameterized.Parameter.html">@Parameter</a>アノテーションをpublicなフィールドに付与すると、
+そのフィールドにテストデータが設定されます。アノテーションのパラメータにてテストデータの配列の添字を指定します。
+デフォルトは0なので配列の先頭ならば省略できます。
+</p>
+<p>
+<a href="tryjunit4Rules.html#TestName">TestName</a>によるテスト名取得ですが、
+＜テストメソッド名＞[＜テストデータ配列の添字＞]
+
+となるようですね。
+</p>
+<h3 id="customizeTestName">テスト名のカスタマイズ</h3>
+<p>
+テスト名はカスタマイズできます。<code>@Parameters</code>アノテーションの<code>name</code>パラメータで指定できます。
+</p>
+<div class="code">
+<pre class="brush:java;highlight: [25];">
+package tryjunit4.parameterized;
+
+import static org.junit.Assert.assertEquals;
+
+import java.util.Arrays;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TestName;
+import org.junit.runner.JUnitCore;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
+
+@RunWith(Parameterized.class)
+public class SetTestNameTest {
+	public static void main(String[] args) {
+		JUnitCore.main(SetTestNameTest.class.getName());
+	}
+
+	@Rule
+	public TestName name = new TestName();
+
+	@Parameters(name = "添字{index}:  最初のパラメータ{0} ２個めのパラメータ {1}")
+	public static Iterable&lt;Object[]> data() {
+		return Arrays.asList(new Object[][] { { 1, 1 }, { -2, 2 }, { 3, 3 } });
+	}
+
+	@Parameter
+	public int fInput;
+	@Parameter(1)
+	// need specify test data array index if it is not 0.
+	public int fExpected;
+
+	@Test
+	public void testNantoka() {
+		System.out.printf("MethodName --%s-- %n", name.getMethodName());
+		assertEquals(fExpected, Math.abs(fInput));
+	}
+
+	@Test
+	public void testKantoka() {
+		System.out.printf("MethodName --%s-- %n", name.getMethodName());
+		assertEquals(fExpected, (int) Math.sqrt(fInput * fInput));
+	}
+}
+</pre>
+</div>
+<p>実行結果</p>
+
+<pre class="result">
+$ java tryjunit4.parameterized.SetTestNameTest
+JUnit version 4.11
+.MethodName --testKantoka[添字0:  最初のパラメータ1 ２個めのパラメータ 1]-- 
+.MethodName --testNantoka[添字0:  最初のパラメータ1 ２個めのパラメータ 1]-- 
+.MethodName --testKantoka[添字1:  最初のパラメータ-2 ２個めのパラメータ 2]-- 
+.MethodName --testNantoka[添字1:  最初のパラメータ-2 ２個めのパラメータ 2]-- 
+.MethodName --testKantoka[添字2:  最初のパラメータ3 ２個めのパラメータ 3]-- 
+.MethodName --testNantoka[添字2:  最初のパラメータ3 ２個めのパラメータ 3]-- 
+
+Time: 0.024
+
+OK (6 tests)
+
+$ 
+</pre>
+<p>
+25行目のnameパラメータでテスト名を指定できます。更に、{index} {0} {1} … という形でテストデータ配列の添字、パラメータ配列の0番目の値、
+パラメータ配列の1番目の値… を指定することが出来ます。日本語も使えます。テストメソッドは英語のままでテストの名前に日本語が使えるのはなにげに画期的かもしれません。
+</p>
+
+<p>
+実はこの機能にはちょっとしたバグがあります。テスト名に括弧 (  を入れて、EclipseにてRun as JUnit から実行させるとテスト名が
+正しく取れません。参照 <a href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=102512">https://bugs.eclipse.org/bugs/show_bug.cgi?id=102512</a>
+2005年に報告されているので随分昔から残ってるんですね。
+</p>
+<p>サンプルコードではテストメソッドを2本にしてみました。複数のメソッドを同じテストデータでテストすることは
+あまりないと思いますが、動作検証ということで。この場合テストデータが3件でテストメソッドが2本ということで、合計6回テストが実行されます。
+</p>
+
+<h3 id="hierarchy">テストの階層化</h3>
+<p>
+Parameterizedを使うと、テストメソッドとテストデータのすべての組み合わせがテスト実行されます。
+コンソール実行ではわかりませんが、JUnit内部では階層構造をもたせているようです。それを可視化して見るために、
+こんなコードを書いてEclipseで実行してみました。tryjunit4.suite.AllTests.classは、<a href="./tryjunit4.html#AllTests">大量のテストケースを一括で動かす</a>
+で使った例です。
+</p>
+<div class="code">
+<pre class="brush:java;highlight: [25];">
+package tryjunit4.parameterized;
+
+import org.junit.runner.JUnitCore;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
+import org.junit.runners.Suite.SuiteClasses;
+
+@RunWith(Suite.class)
+@SuiteClasses({ ParameterizedTest.class, SetTestNameTest.class, 
+	NoConstructorTest.class, tryjunit4.suite.AllTests.class })
+public class AllTests {
+	public static void main(String[] args) {
+		JUnitCore.main(AllTests.class.getName());
+	}
+}
+</pre>
+</div>
+
+<p>Eclipseによる実行結果</p>
+
+<img src="Parameter.AllTests.png" />
+<p>
+Parameterizedアノテーションが付いているテストはテストデータ配下にテストメソッドが連なる構造のようです。
+ここにもカスタマイズしたテスト名が反映されています。検証していませんが、AntのJUnitReportにも反映されるのでは、、、と考えています。
+</p>
+
+<p>
+市井には、テストメソッドを日本語で書く流儀があるようです。もしも@Testアノテーションにもテスト名が設定できたら、
+日本人・外国人の混成チームでテスト実装は外国人、テスト名のメンテナンスは日本人というやり方が実用的になるかもしれません。
+誰かが（私？）Pull Requestを投げてみても面白いでしょう。
+</p>
+
+<h2 id="categories">Categoriesを試す。</h2>
+
+<p>
+<a href="tryjunit4.html#AllTests">大量のテストケースを一括で動かす。</a>において、複数のテストケースを一括で実行するときのやり方を紹介しました。
+このやりかたはテストケースを階層的にまとめていました。
+Categories を使うと階層構造ではなくあるカテゴリーに属する・属さないという条件でテスト実行を制御できます。
+</p>
+<h3>やりかた</h3>
+<p>１．カテゴリーを表現するインターフェースを作成する。これは、識別できるのであれば文字列でもクラスでもよかったのかもしれません。
+しかし、コンパイラにチェックを入れされることができること、バイトコードサイズが軽量になることからインターフェースを使うのがよいのだと思います。</p>
+<div class="code">
+<pre class="brush:java;">
+package tryjunit4.categories;
+
+public interface ColorCategory {
+
+}
+</pre>
+</div>
+<br>
+<div class="code">
+<pre class="brush:java;">
+package tryjunit4.categories;
+
+public interface FruitsCategory {
+
+}
+</pre>
+</div>
+
+<p>２．テストケースに<a href="./apidocs/org/junit/experimental/categories/Category.html">org.junit.experimental.categories.Category</a>アノテーションを付与する。
+アノテーションのパラメータに、カテゴリーを表現する型のクラスオブジェクトを設定してください。
+Categoryアノテーションは、クラスにもメソッドにも付与できます。</p>
+
+<div class="code">
+<pre class="brush:java;highlight: [7,14];" >
+package tryjunit4.categories;
+
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+
+
+@Category(FruitsCategory.class)
+public class NantokaTest {
+	@Test
+	public void testApple() {
+		System.out.println("testApple");
+	}
+
+	@Category(ColorCategory.class)
+	@Test
+	public void testOrange() {
+		System.out.println("testOrange");
+	}
+}
+</pre>
+</div>
+<br>
+
+<div class="code">
+<pre class="brush:java;highlight: [13];">
+package tryjunit4.categories;
+
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+
+
+public class KantokaTest {
+	@Test
+	public void testNantoka() {
+		System.out.println("testNantoka");
+	}
+
+	@Category(FruitsCategory.class)
+	@Test
+	public void testGrape() {
+		System.out.println("testGrape");
+	}
+}
+</pre>
+</div>
+
+
+<p>３．<code>org.junit.runner.RunWith</code>アノテーションが付与されたテストケースを用意する。
+CategoriesはSuiteクラスの子クラスです。
+この例は、ExcludeCategoryを使っています。10行目のようなアノテーション付与で、
+NantokaTestとKantokaTestからColorCategoryを除外したテストメソッドが実行されます。</p>
+<div class="code">
+<pre class="brush:java;highlight: [10];">
+package tryjunit4.categories;
+
+import org.junit.experimental.categories.Categories;
+import org.junit.experimental.categories.Categories.ExcludeCategory;
+import org.junit.runner.JUnitCore;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite.SuiteClasses;
+
+@RunWith(Categories.class)
+@ExcludeCategory(ColorCategory.class)
+@SuiteClasses({ NantokaTest.class, KantokaTest.class })
+public class ExcludeTests {
+	public static void main(String[] args) {
+		JUnitCore.main(ExcludeTests.class.getName());
+	}
+}
+</pre>
+</div>
+
+
+<p>実行結果（CLASSPATHで、junit4.11.jarが設定されているとする。）</p>
+
+<pre class="result">
+$ java tryjunit4.categories.ExcludeTests
+JUnit version 4.11
+.testApple
+.testGrape
+.testNantoka
+
+Time: 0.007
+
+OK (3 tests)
+
+$
+</pre>
+<p>
+ColorTestsが、付与されているtestOrangeは実行されませんでした。
+</p>
+<p>
+別の例も試してみましょう。ExcludeCategoryと対になるIncludeCategoryを使ってみます。
+</p>
+
+<div class="code">
+<pre class="brush:java;highlight: [10];">
+package tryjunit4.categories;
+
+import org.junit.experimental.categories.Categories;
+import org.junit.experimental.categories.Categories.IncludeCategory;
+import org.junit.runner.JUnitCore;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite.SuiteClasses;
+
+@RunWith(Categories.class)
+@IncludeCategory(ColorCategory.class)
+@SuiteClasses({ NantokaTest.class, KantokaTest.class })
+public class IncludeTests {
+	public static void main(String[] args) {
+		JUnitCore.main(IncludeTests.class.getName());
+	}
+}
+
+</pre>
+</div>
+<p>実行結果（CLASSPATHで、junit4.11.jarが設定されているとする。）</p>
+<pre class="result">
+$ java tryjunit4.categories.IncludeTests
+JUnit version 4.11
+.testOrange
+
+Time: 0.005
+
+OK (1 test)
+
+$ 
+</pre>
+<p>
+IncludeCategoryの場合は、「@IncludeCategoryに書かれていないテストクラス、メソッドを除外する」という挙動になります。
+つまり、書かれているテストクラスのみ実行します。
+</p>
+
+<p>
+では、IncludeCategoryとExcludeCategory両方が設定されている場合はどうでしょうか？
+</p>
+
+<div class="code">
+<pre class="brush:java;highlight: [12,13];">
+package tryjunit4.categories;
+
+import org.junit.experimental.categories.Categories;
+import org.junit.experimental.categories.Categories.ExcludeCategory;
+import org.junit.experimental.categories.Categories.IncludeCategory;
+import org.junit.runner.JUnitCore;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite.SuiteClasses;
+
+
+@RunWith(Categories.class)
+@IncludeCategory(FruitsCategory.class)
+@ExcludeCategory(ColorCategory.class)
+@SuiteClasses({ NantokaTest.class, KantokaTest.class })
+public class IncludeExcludeTests {
+	public static void main(String[] args) {
+		JUnitCore.main(IncludeExcludeTests.class.getName());
+	}
+
+}
+</pre>
+</div>
+<p>実行結果（CLASSPATHで、junit4.11.jarが設定されているとする。）</p>
+<pre class="result">
+$ java tryjunit4.categories.IncludeExcludeTests
+JUnit version 4.11
+.testApple
+.testGrape
+
+Time: 0.007
+
+OK (2 tests)
+
+$
+</pre>
+<p>
+この場合は、@Includeに書かれているものから@Excludeに書かれているものを除外して実行されます。
+例では、@Includeに書かれている testApple(), testOrange(), testGrape() から、@Excludeに書かれているtestOrange()が除外されて実行されます。
+</p>
+<p>
+では、IncludeCategoryとExcludeCategory両方設定されていない時はどうでしょうか？
+この場合は、@SuiteClassesに設定されているテストがすべて実行されます。
+</p>
+
+<p>
+まとめてみました。
+</p>
+<dl>
+	<dt>@Includeのみ</dt>
+	<dd>@Includeに書かれているテストのみ実行。</dd>
+
+	<dt>@Excludeのみ</dt>
+	<dd>@Excludeに書かれているテスト以外を実行。</dd>
+
+	<dt>@Includeと@Exclude両方</dt>
+	<dd>@Includeに書かれているテストから@Excludeに書かれているテストを除外して実行。</dd>
+	<dt>@Includeと@Excludeの記載なし</dt>
+	<dd>すべて実行する。</dd>
+</dl>
+
+<p>
+条件に含まれる・含まれないというやり方で実行するテストを選択する枠組みとしては、至極まっとうな印象を受けました。
+これが必要になる状況はぱっとは思いつきませんが、ツール・フレームワークとしては当然あるべき機能でしょう。
+パッケージ名からして実験的機能のようですが、そのような扱いでなくなることを期待したいです。
+</p>
+
+<hr>
+<p>
+<img src="../88x31.png" alt="creative commons BY"/>
+<br>
+この文書は
+<a href="http://creativecommons.org/licenses/by/2.1/jp/">表示 2.1 日本 (CC BY 2.1) </a>
+によってライセンスされます。
+
+</p>
+
+<p><a href="../index.html">トップページに戻る</a></p>
+
+<script type="text/javascript">
+     SyntaxHighlighter.all()
+</script>
+
+
+
+
+</body>
+</html>

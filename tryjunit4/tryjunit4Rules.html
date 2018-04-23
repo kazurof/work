@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="keywords" content="JUnit4,Rules,junit-4.11.jar,JUnit" >
+    <meta name="description" content="この文書では、JUnit4のRulesについて動かしてみた結果をまとめています。" >
+    <title>JUnit4をやってみよう(Rules編)</title>
+
+
+<meta property="og:title" content="JUnit4をやってみよう(Rules編)" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://www7b.biglobe.ne.jp/~archer/tryjunit4/tryjunit4Rules.html" />
+<meta property="og:image" content="http://www7b.biglobe.ne.jp/~archer/tryjunit4/rulepageimage.png" />
+<meta property="og:description" content="この文書では、JUnit4のRulesについて動かしてみた結果をまとめています。">
+<meta property="og:locale" content="ja_JP" />
+<meta property="fb:app_id" content="593428597348052" />
+
+
+    <script type="text/javascript" src="shscripts/shCore.js" ></script>
+    <script type="text/javascript" src="shscripts/shBrushJava.js"></script>
+    
+    <link rel="stylesheet" href="./style.css" type="text/css">
+    <link rel="stylesheet" href="shstyles/shCore.css" type="text/css">
+    <link rel="stylesheet" href="shstyles/shThemeDefault.css" type="text/css">
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-38403046-2']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+</head>
+<body>
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) return;
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/ja_JP/all.js#xfbml=1&appId=593428597348052";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+<h1>JUnit4をやってみよう(Rules編)</h1>
+公開日 : 2013-02-23 <br>
+更新日 : $Date: 2013-11-09 01:12:39 +0900 (Sat, 09 Nov 2013) $ <br>
+
+<div class="fb-like" data-href="http://www7b.biglobe.ne.jp/~archer/tryjunit4/tryjunit4Rules.html" data-send="false" data-width="1000" data-show-faces="false"></div>
+<hr>
+<h2>要約</h2>
+<p>この文書は、<a href="tryjunit4.html">JUnit4をやってみよう</a>の続きです。<a href="https://github.com/junit-team/junit/wiki">JUnit4</a>
+のRulesについて<code>junit-4.11.jar</code>をベースに動かしてみた結果をまとめています。
+この文書は技術的に正確であることを意図して書いていますが、どこかで大嘘をついていたり、経年により陳腐化しているかもしれません。
+もっと有効な方法があることを見逃しているかもしれません。
+<br>
+姉妹ページ、<a href="tryjunit4.html">JUnit4をやってみよう</a>、<a href="tryjunit4More.html">JUnit4をもっとやってみよう</a>もどうぞ。<br>
+サンプルソースは<a href="https://github.com/kazurof/tryjunit4">https://github.com/kazurof/tryjunit4</a> においてあります。
+</p>
+<h2>目次</h2>
+<ol>
+<li><a href="#Rules">Rulesとはなんぞや</a>
+<ol>
+<li><a href="#TemporaryFolder">TemporaryFolder</a></li>
+<li><a href="#ExpectedException">ExpectedException</a></li>
+<li><a href="#ErrorCollector">ErrorCollector</a></li>
+<li><a href="#TestName">TestName</a></li>
+<li><a href="#Timeout">Timeout</a></li>
+</ol>
+
+</li>
+
+<li><a href="#abstractClasses">自前Ruleを作るための抽象クラス群</a>
+<ol>
+<li><a href="#ExternalResource">ExternalResource</a></li>
+<li><a href="#TestWatcher">TestWatcher</a></li>
+<li><a href="#Verifier">Verifier</a></li>
+</ol>
+</li>
+
+<li><a href="#ClassRule">クラス単位での共通処理</a></li>
+<li><a href="#RuleChain">Ruleが実行される順序の制御</a></li>
+<li><a href="#reference">参考リンク</a></li>
+
+</ol>
+
+<h2 id="Rules">Rulesとはなんぞや</h2>
+
+<p>
+Rulesは、テストを実行する際の共通処理を設定する枠組みです。この枠組みに沿った便利機能が幾つか提供されています。
+まずはその挙動に慣れれば仕組みがイメージできると思います。
+<p>
+<h2 id="TemporaryFolder">TemporaryFolder</h2>
+<p>
+TemporaryFolderは、テスト実行時のみ使えて終わったら消されるファイル・フォルダを提供します。
+<p>
+<div class="code">
+<pre class="brush:java;highlight: [10,15,19,20,33,34,35];">
+package tryjunit4.rule;
+
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.io.IOException;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+import org.junit.runner.JUnitCore;
+
+public class TemporaryFolderTest {
+	public static void main(String[] args) {
+		System.out.printf("java.io.tmpdir is %s%n", System.getProperty("java.io.tmpdir"));
+		JUnitCore.main(TemporaryFolderTest.class.getName());
+	}
+
+	@Rule
+	public TemporaryFolder folder = new TemporaryFolder();
+
+	@Test
+	public void testUsingTempFolder() throws IOException {
+		tryTemporaryFolder();
+	}
+
+	@Test
+	public void testUsingTempFolder2() throws IOException {
+		tryTemporaryFolder();
+	}
+
+	private void tryTemporaryFolder() throws IOException {		
+		File createdFile = folder.newFile("myfile.txt");
+		File createdFolder = folder.newFolder("subfolder");
+		File randomFile = folder.newFile();
+		assertTrue(createdFolder.isDirectory());
+		assertTrue(createdFile.isFile());
+		assertTrue(randomFile.isFile());
+
+		System.out.println("\n-------------");
+		System.out.println("root folder is  ->" + folder.getRoot());
+		System.out.println(createdFile.getAbsolutePath());
+		System.out.println(createdFolder.getAbsolutePath());
+		System.out.println(randomFile.getAbsolutePath());
+		System.out.println();
+	}
+}
+</pre>
+</div>
+<p>実行結果（CLASSPATHに、<code>junit-4.11.jar</code>が設定されているとする。以下の実行例も同様。）</p>
+<pre class="result">
+$ java tryjunit4.rule.TemporaryFolderTest
+java.io.tmpdir is /var/folders/yO/yODr4DYqEMOo8qc2HB+S8E+++TI/-Tmp-/
+JUnit version 4.11
+.
+-------------
+root folder is  ->/var/folders/yO/yODr4DYqEMOo8qc2HB+S8E+++TI/-Tmp-/junit4919826527625498940
+/var/folders/yO/yODr4DYqEMOo8qc2HB+S8E+++TI/-Tmp-/junit4919826527625498940/myfile.txt
+/var/folders/yO/yODr4DYqEMOo8qc2HB+S8E+++TI/-Tmp-/junit4919826527625498940/subfolder
+/var/folders/yO/yODr4DYqEMOo8qc2HB+S8E+++TI/-Tmp-/junit4919826527625498940/junit8388176439118689457.tmp
+
+.
+-------------
+root folder is  ->/var/folders/yO/yODr4DYqEMOo8qc2HB+S8E+++TI/-Tmp-/junit1950742328813729764
+/var/folders/yO/yODr4DYqEMOo8qc2HB+S8E+++TI/-Tmp-/junit1950742328813729764/myfile.txt
+/var/folders/yO/yODr4DYqEMOo8qc2HB+S8E+++TI/-Tmp-/junit1950742328813729764/subfolder
+/var/folders/yO/yODr4DYqEMOo8qc2HB+S8E+++TI/-Tmp-/junit1950742328813729764/junit6746419094246856591.tmp
+
+
+Time: 0.065
+
+OK (2 tests)
+
+
+$ 
+</pre>
+<p>20行目でfolderフィールドを定義し、
+<a href="http://junit-team.github.com/junit/javadoc/4.10/org/junit/rules/TemporaryFolder.html">
+TemporaryFolder</a>
+のインスタンスを設定します。さらに
+<a href="http://junit-team.github.com/junit/javadoc/4.10/org/junit/Rule.html">
+Rule
+</a>
+アノテーションを付与します。
+JUnitフレームワークはこのアノテーションが付いているフィールドのインスタンスに共通処理を委譲します。
+実は、<a href="http://junit-team.github.com/junit/javadoc/4.10/org/junit/Rule.html">Rule</a>
+アノテーションはフィールドだけでなく、メソッドにも付与できます。この場合メソッドの戻り値に共通処理を委譲します。
+フィールドの型・メソッドの戻り値の型は、
+<a href="http://junit-team.github.com/junit/javadoc/4.10/org/junit/rules/TestRule.html">TestRule</a>
+でなくてはなりません。
+</p>
+<p>
+33,34,35行目で、folderフィールド経由でテンポラリファイル・フォルダを作っています。具体的な場所は、<code>java.io.tmpdir</code>システムプロパティの
+パス配下のようですね。（15行目の出力と比較。）この例はMacでの出力結果ですが、windowsやLinuxではまた違ってくると思います。<br>
+処理の流れとしては、<p>
+<ol>
+<li>
+テスト実行前にJUnitがfolder経由でテンポラリフォルダを配置するルートのフォルダを作成する。（JUnit内部にて）
+</li>
+<li>
+テストコードがfolder経由でテスト本体で必要に応じてファイルを作成する。（33,34,35行目にて）
+</li>
+<li>
+テスト実行後にJUnitがfolder経由でテスト後処理で１にて作成したフォルダを削除する。（JUnit内部にて）
+</li>
+</ol>
+<p>という流れになります。実際に削除されていることはこの文書では説明しにくいですが、実際に動作させてみてブレークポイントで止めながら
+動かすと確認できると思います。<br>
+テスト毎に一時的な使い捨てのファイルを使いたいときに便利かと思います。
+</p>
+
+<h2 id="ExpectedException">ExpectedException</h2>
+<p>
+ExpectedExceptionは、スローされるべき例外を管理する機能です。
+</p>
+<div class="code">
+<pre class="brush:java;highlight: [7,15,16,18,31,32,33,38];">
+package tryjunit4.rule;
+
+import static org.hamcrest.CoreMatchers.startsWith;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
+import org.junit.runner.JUnitCore;
+
+public class ExpectedExceptionTest {
+	public static void main(String[] args) {
+		JUnitCore.main(ExpectedExceptionTest.class.getName());
+	}
+
+	@Rule
+	public ExpectedException thrown = ExpectedException.none();
+	
+	@Test(expected = NullPointerException.class)
+	public void ordinalExpectedException() {
+		throw new NullPointerException();
+	}
+
+	@Test
+	public void throwsNullPointerException() {
+		thrown.expect(NullPointerException.class);
+		throw new NullPointerException();
+	}
+
+	@Test
+	public void throwsNullPointerExceptionWithMessage() {
+		thrown.expect(NullPointerException.class);
+		thrown.expectMessage("happened?");
+		thrown.expectMessage(startsWith("What"));
+		throw new NullPointerException("What happened?");
+	}
+
+	@Test
+	public void throwsNothing() {
+		// no exception expected, none thrown: passes.
+	}
+}
+
+</pre>
+</div>
+<p>実行結果</p>
+<pre class="result">
+$ java tryjunit4.rule.ExpectedExceptionTest
+JUnit version 4.11
+....
+Time: 0.016
+
+OK (4 tests)
+
+$ 
+</pre>
+<p>
+従来、例外がスローされることを期待するテストについては、18行目のように、
+</p>
+<div class="code">
+<pre class="brush:java;">
+    @Test(expected = NullPointerException.class)
+</pre>
+</div>
+<p>
+といった記述をしていました。しかしこれでテストできるのは例外オブジェクトの型だけで、例外メッセージの内容へのテストができません。
+他に独自の情報を例外オブジェクトに持たせていた場合もやはりテストができません。
+すると、JUnit3.*時代のようにtry-catchを書いてcatch節で例外オブジェクトの内容のテストと、
+try節の最後の行に<code>Assert.fail()</code>を書く形になります。あまり便利とは言いがたいです。
+</p>
+<p>ExpectedExceptionでこの状況を解決出来ます。
+ExpectedException#expect()で期待する例外の型を、（30行目）ExpectedException#expectMessage()で期待する例外メッセージを（32行目）を
+設定出来ます。また、
+<a href="http://junit-team.github.com/junit/javadoc/4.10/org/hamcrest/Matcher.html">Matcher</a>を設定することができますのでassertThatの仕組みを使ってより柔軟な
+例外オブジェクトのテストが可能です。（33行目）何も設定されなかったら例外がスローされないことをテストします。（38行目）
+便利ですね。
+</p>
+<p>
+ExpectedException#expect()などのメソッド呼び出しはテストメソッドの先頭で呼ぶ必要があります。
+（例外がスローされたら残りの処理は実行されないから。）もしプロジェクトで、「１．テストデータの設定」「２．ビジネスロジックの実行」「３．結果の検証」という
+テストケースの書き方について標準化がされていたら、「１．データの設定」の段階でExpectedException#expect()を呼ぶ必要があることに留意する必要があるかもしれません。
+（考えすぎ？）検証時に期待する結果を予め登録するという形です。
+</p>
+
+<h2 id="ErrorCollector">ErrorCollector</h2>
+<p>
+ErrorCollectorは、１つのテストで複数の例外がスローされる機能を提供します。
+</p>
+
+<div class="code">
+<pre class="brush:java;highlight: [5,18,19];">
+package tryjunit4.rule;
+
+import static org.hamcrest.CoreMatchers.is;
+
+import java.util.concurrent.Callable;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ErrorCollector;
+import org.junit.runner.JUnitCore;
+
+public class ErrorCollectorTest {
+
+	public static void main(String[] args) {
+		JUnitCore.main(ErrorCollectorTest.class.getName());
+	}
+
+	@Rule
+	public ErrorCollector collector = new ErrorCollector();
+
+	@Test
+	public void testAddError() {
+		collector.addError(new Throwable("first thing went wrong"));
+		collector.addError(new Throwable("second thing went wrong"));
+	}
+
+	@Test
+	public void testCheckThat() {
+		collector.checkThat("apple", is("appleeeee"));
+		System.out.println("test execution came to the last line of testCheckThat()!");
+	}
+
+	@Test
+	public void testCallable() {
+		collector.checkSucceeds(new Callable&lt;Object>() {
+			@Override
+			public String call() throws Exception {
+				throw new RuntimeException("FAIL!");
+			}
+		});
+		System.out.println("test execution came to the last line of testCheckThat()!");
+	}
+}
+
+</pre>
+</div>
+
+<p>実行結果(スタックトレースが長いので適宜省略します。)</p>
+<pre class="result">
+$ java tryjunit4.rule.ErrorCollectorTest
+JUnit version 4.11
+.EE.test execution came to the last line of testCheckThat()!
+E.test execution came to the last line of testCheckThat()!
+E
+Time: 0.025
+There were 4 failures:
+1) testAddError(tryjunit4.rule.ErrorCollectorTest)
+java.lang.Throwable: first thing went wrong
+	at tryjunit4.rule.ErrorCollectorTest.testAddError(ErrorCollectorTest.java:23)
+ーー省略ーー
+	at tryjunit4.rule.ErrorCollectorTest.main(ErrorCollectorTest.java:15)
+2) testAddError(tryjunit4.rule.ErrorCollectorTest)
+java.lang.Throwable: second thing went wrong
+	at tryjunit4.rule.ErrorCollectorTest.testAddError(ErrorCollectorTest.java:24)
+ーー省略ーー
+	at tryjunit4.rule.ErrorCollectorTest.main(ErrorCollectorTest.java:15)
+3) testCallable(tryjunit4.rule.ErrorCollectorTest)
+java.lang.RuntimeException: FAIL!
+	at tryjunit4.rule.ErrorCollectorTest$1.call(ErrorCollectorTest.java:38)
+	at tryjunit4.rule.ErrorCollectorTest$1.call(ErrorCollectorTest.java:1)
+	at org.junit.rules.ErrorCollector.checkSucceeds(ErrorCollector.java:78)
+	at tryjunit4.rule.ErrorCollectorTest.testCallable(ErrorCollectorTest.java:35)
+ーー省略ーー
+	at tryjunit4.rule.ErrorCollectorTest.main(ErrorCollectorTest.java:15)
+4) testCheckThat(tryjunit4.rule.ErrorCollectorTest)
+java.lang.AssertionError: 
+Expected: is "appleeeee"
+     but: was "apple"
+	at org.hamcrest.MatcherAssert.assertThat(MatcherAssert.java:20)
+	at org.junit.Assert.assertThat(Assert.java:865)
+	at org.junit.rules.ErrorCollector$1.call(ErrorCollector.java:65)
+	at org.junit.rules.ErrorCollector.checkSucceeds(ErrorCollector.java:78)
+	at org.junit.rules.ErrorCollector.checkThat(ErrorCollector.java:63)
+	at org.junit.rules.ErrorCollector.checkThat(ErrorCollector.java:54)
+	at tryjunit4.rule.ErrorCollectorTest.testCheckThat(ErrorCollectorTest.java:29)
+ーー省略ーー
+	at tryjunit4.rule.ErrorCollectorTest.main(ErrorCollectorTest.java:15)
+
+FAILURES!!!
+Tests run: 3,  Failures: 4
+
+$ 
+</pre>
+<p>
+１つのテストメソッドが失敗する場合、JUnitでは
+<a href="http://docs.oracle.com/javase/7/docs/api/java/lang/Throwable.html">Throwable</a>
+がスローされることで表現されます。
+しかし多数の項目を一度にテストする場合、（例えば表形式など多数のデータが一つになっているオブジェクトのテストなど）
+スローされる例外が１個だけというのは不便です。データの間違いがあったらすぐテスト失敗にして残りのデータをテストしない（まだ間違いがあるかもしれないのに）
+という動作では、結局全部でいくつ間違いがあるのかわからなくなります。全体としていくつ間違えているのか知りたいのです。
+</p>
+
+<p>
+ErrorCollectorは、複数の例外オブジェクトを受け付けてくれます。テスト終了後何らかの例外オブジェクトが
+渡されていたらテストを失敗にすることができます。さらに、テスト対象オブジェクトと
+<a href="http://junit-team.github.com/junit/javadoc/4.10/org/hamcrest/Matcher.html">Matcher</a>を設定することができますので、
+assertThatの仕組みを使ってより柔軟なテストが可能です。
+</p>
+
+<p>
+またさらに、<a href="http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/Callable.html" target="_blank">Callable</a>のオブジェクトを渡して例外がスローされるかのテストや、<a href="http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/Callable.html" target="_blank">Callable</a>の結果をテストすることもできます。
+「エラーを収集するもの」の意味から外れている感じもありますね。しかし、CallableオブジェクトのテストをするAPIをゼロから設計したとすると、名前はともかくこのような形になったかもしれません。
+ErrorCollectorというクラスにこのAPIが付いたのは単なる偶然とも言えるかもしれません。
+</p>
+<!--
+<p>checkSucceedsメソッドのパラメータの型パラメータが微妙に気になります。</p>
+<div class="code">
+<pre class="brush:java;">
+public Object checkSucceeds(Callable&lt;Object> callable) {
+</pre>
+</div>
+<p>こちらのほうが使いやすいのでは？とも思うのですが何かあるのでしょうかね？</p>
+<div class="code">
+<pre class="brush:java;">
+public Object checkSucceeds(Callable&lt;?> callable) {
+</pre>
+</div>
+-->
+<p>
+閑話休題。多数のテストを１個のメソッドで大量に行うとそれはそれで大変という向きもあるかもしれませんが、
+ひと通りテストをして失敗毎に例外オブジェクトを保持しておく便利機能はフレームワークにあったほうが良いと思います。
+</p>
+
+
+<h2 id="TestName">TestName</h2>
+
+<p>
+TestNameは、現在実行しているテストの名前を提供します。
+</p>
+
+
+<div class="code">
+<pre class="brush:java;highlight: [7,15,16];">
+package tryjunit4.rule;
+
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TestName;
+import org.junit.runner.JUnitCore;
+
+public class TestNameTest {
+	public static void main(String[] args) {
+		JUnitCore.main(TestNameTest.class.getName());
+	}
+
+	@Rule
+	public TestName name = new TestName();
+
+	@Test
+	public void testA() {
+		assertEquals("testA", name.getMethodName());
+		someMethod();
+	}
+
+	@Test
+	public void testB() {
+		assertEquals("testB", name.getMethodName());
+		someMethod();
+	}
+
+	private void someMethod() {
+		System.out.println(name.getMethodName());
+	}
+}
+
+</pre>
+</div>
+<p>実行結果</p>
+<pre class="result">
+$ java tryjunit4.rule.TestNameTest
+JUnit version 4.11
+.testA
+.testB
+
+Time: 0.006
+
+OK (2 tests)
+
+$ 
+</pre>
+<p>
+TestNameは、現在実行しているテストの名前を提供します。それだけです。
+テスト名によって制御を変えたいときとかなにかログに出したいときに便利かもしれません。
+何らかのJUnitの拡張ライブラリを開発する際のデバッグ目的など、特殊用途向けかも知れません。
+</p>
+
+<h2 id="Timeout">Timeout</h2>
+<p>
+Timeoutは、長時間かかるテストを失敗とみなします。
+</p>
+
+
+<div class="code">
+<pre class="brush:java;highlight: [6,14,15];">
+package tryjunit4.rule;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TestRule;
+import org.junit.rules.Timeout;
+import org.junit.runner.JUnitCore;
+
+public class TimeoutTest {
+	public static void main(String[] args) {
+		JUnitCore.main(TimeoutTest.class.getName());
+	}
+
+	@Rule
+	public TestRule globalTimeout = new Timeout(20);
+
+	@Test
+	public void testInfiniteLoop1() {
+		for (;;) {
+		}
+	}
+
+	@Test(timeout = 10)
+	public void testInfiniteLoop2() {
+		for (;;) {
+		}
+	}
+	@Test(timeout = 30)
+	public void testInfiniteLoop3() {
+		for (;;) {
+		}
+	}
+}
+
+</pre>
+</div>
+<p>実行結果</p>
+<pre class="result">
+$ java tryjunit4.rule.TimeoutTest
+JUnit version 4.11
+.E.E.E
+Time: 0.102
+There were 3 failures:
+1) testInfiniteLoop1(tryjunit4.rule.TimeoutTest)
+java.lang.Exception: test timed out after 20 milliseconds
+	at tryjunit4.rule.TimeoutTest.testInfiniteLoop1(TimeoutTest.java:19)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+	at java.lang.reflect.Method.invoke(Method.java:597)
+	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:47)
+	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:44)
+	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+	at org.junit.internal.runners.statements.FailOnTimeout$StatementThread.run(FailOnTimeout.java:74)
+2) testInfiniteLoop2(tryjunit4.rule.TimeoutTest)
+java.lang.Exception: test timed out after 10 milliseconds
+	at tryjunit4.rule.TimeoutTest.testInfiniteLoop2(TimeoutTest.java:25)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:39)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:25)
+	at java.lang.reflect.Method.invoke(Method.java:597)
+	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:47)
+	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:44)
+	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+	at org.junit.internal.runners.statements.FailOnTimeout$StatementThread.run(FailOnTimeout.java:74)
+3) testInfiniteLoop3(tryjunit4.rule.TimeoutTest)
+java.lang.Exception: test timed out after 20 milliseconds
+	at java.lang.Object.wait(Native Method)
+	at java.lang.Thread.join(Thread.java:1218)
+	at org.junit.internal.runners.statements.FailOnTimeout.evaluateStatement(FailOnTimeout.java:26)
+	at org.junit.internal.runners.statements.FailOnTimeout.evaluate(FailOnTimeout.java:17)
+	at org.junit.internal.runners.statements.FailOnTimeout$StatementThread.run(FailOnTimeout.java:74)
+
+FAILURES!!!
+Tests run: 3,  Failures: 3
+
+$
+</pre>
+<p>
+従前、テストメソッドのタイムアウトは、
+<a href="http://junit-team.github.com/junit/javadoc/4.10/org/junit/Test.html">Test</a>アノテーションに設定することが出来ました。
+</p>
+<div class="code">
+<pre class="brush:java;">
+@Test(timeout = 30)
+</pre>
+</div>
+<p>
+Timeoutではクラスごとに同じ設定をすることができます。メソッド毎に書く必要がないので記述が簡素化できますね。
+<a href="http://junit-team.github.com/junit/javadoc/4.10/org/junit/Test.html">Test</a>
+アノテーションにもタイムアウト設定があった場合はより短い方の時間が優先されるようです。
+</p>
+
+<h2 id="abstractClasses">自前Ruleを作るための抽象クラス群</h2>
+
+
+<p>
+自前Ruleを作成する際に使える便利な抽象クラスがいくつかあります。今まで紹介したRuleの一部でも使われています。
+簡単な例を紹介します。
+</p>
+<h3 id="ExternalResource">ExternalResource</h3>
+
+<p>ExternalResourceは、テストの前処理と後処理を行うためのメソッドを提供します。TemporaryFolderの親クラスです。</p>
+
+<div class="code">
+<pre class="brush:java;highlight: [5,13,14];">
+package tryjunit4.rule;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExternalResource;
+import org.junit.runner.JUnitCore;
+
+public class ExternalResourceTest {
+	public static void main(String[] args) {
+		JUnitCore.main(ExternalResourceTest.class.getName());
+	}
+
+	@Rule
+	public ExternalResource resource = new ExternalResource() {
+		@Override
+		protected void before() {
+			System.out.println("I am before() method.");
+		};
+
+		@Override
+		protected void after() {
+			System.out.println("I am after() method.");
+		};
+	};
+
+	@Test
+	public void testNantoka() {
+		System.out.println("I am testNantoka() method.");
+	}
+
+	@Test
+	public void testKantoka() {
+		System.out.println("I am testKantoka() method.");
+	}
+}
+</pre>
+</div>
+
+<p>実行結果</p>
+<pre class="result">
+$ java tryjunit4.rule.ExternalResourceTest
+JUnit version 4.11
+.I am before() method.
+I am testKantoka() method.
+I am after() method.
+.I am before() method.
+I am testNantoka() method.
+I am after() method.
+
+Time: 0.005
+
+OK (2 tests)
+
+$
+</pre>
+
+<p>
+<a href="tryjunit4.html#validateBeforeAfter">@BeforeClass,@Before,@AfterClass,@Afterそれぞれの違いを検証する。</a>で検証した@Before と@Afterと同様の挙動になります。
+</p>
+
+<h3 id="TestWatcher">TestWatcher</h3>
+<p>TestWatcherは、テスト実行前、前提条件不成立時、テスト成功時、テスト失敗時、テスト終了後で呼び出されるメソッドを提供します。
+TestNameの親クラスです。
+</p>
+<div class="code">
+<pre class="brush:java;highlight: [8,9,18,19];">
+package tryjunit4.rule;
+
+import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.internal.AssumptionViolatedException;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
+import org.junit.runner.JUnitCore;
+
+public class TestWatcherTest {
+	public static void main(String[] args) {
+		JUnitCore.main(TestWatcherTest.class.getName());
+	}
+
+	@Rule
+	public TestWatcher watchman = new TestWatcher() {
+		@Override
+		protected void starting(Description d) {
+			System.out.println("I am starting() method. name -> " + d.getMethodName());
+		}
+
+		@Override
+		protected void skipped(AssumptionViolatedException e, Description d) {
+			System.out.println("I am skipped() method. name -> " + d.getMethodName());
+			System.out.println(e.toString());
+		}
+
+		@Override
+		protected void succeeded(Description d) {
+			System.out.println("I am succeeded() method. name -> " + d.getMethodName());
+		}
+
+		@Override
+		protected void failed(Throwable th, Description d) {
+			System.out.println("I am failed() method. name -> " + d.getMethodName());
+			System.out.println(th.toString());
+
+		}
+
+		@Override
+		protected void finished(Description d) {
+			System.out.println("I am finished() method. name -> " + d.getMethodName());
+		}
+
+	};
+
+	@Test
+	public void testAndFail() {
+		fail("this test is fail.");
+	}
+
+	@Test
+	public void testAndSucceed() {
+	}
+
+	@Test
+	public void testPreconditionViolation() {
+		assumeTrue(false);
+	}
+}
+</pre>
+</div>
+
+<p>実行結果(スタックトレースが長いので適宜省略します。)</p>
+<pre class="result">
+$ java tryjunit4.rule.TestWatcherTest
+JUnit version 4.11
+.I am starting() method. name -> testAndSucceed
+I am succeeded() method. name -> testAndSucceed
+I am finished() method. name -> testAndSucceed
+.I am starting() method. name -> testAndFail
+I am failed() method. name -> testAndFail
+java.lang.AssertionError: this test is fail.
+I am finished() method. name -> testAndFail
+E.I am starting() method. name -> testPreconditionViolation
+I am skipped() method. name -> testPreconditionViolation
+org.junit.internal.AssumptionViolatedException: got: <false>, expected: is <true>
+I am finished() method. name -> testPreconditionViolation
+
+Time: 0.018
+There was 1 failure:
+1) testAndFail(tryjunit4.rule.TestWatcherTest)
+java.lang.AssertionError: this test is fail.
+	at org.junit.Assert.fail(Assert.java:88)
+	at tryjunit4.rule.TestWatcherTest.testAndFail(TestWatcherTest.java:52)
+ーー省略ーー
+	at tryjunit4.rule.TestWatcherTest.main(TestWatcherTest.java:15)
+
+FAILURES!!!
+Tests run: 3,  Failures: 1
+
+$ 
+</pre>
+<p>
+各時点でのメソッドで、
+<a href="http://junit-team.github.com/junit/javadoc/4.10/org/junit/runner/Description.html">Description</a>のインスタンスをJUnitフレームワーク側から貰えますので、
+このインスタンスの情報を利用できます。
+<code>void skipped(AssumptionViolatedException e, Description d)</code>については説明が必要かもしれません。(JUnit4.11での新メソッドです。)
+このメソッドはテストの前提条件が失敗した時に、すなわちassume系のテストメソッドが失敗した時に呼び出されます。assume系の詳細は
+<a href="tryjunit4.html#Assumptions">Assumptionsを試す</a>をどうぞ。
+</p>
+<h3 id="Verifier">Verifier</h3>
+<p>Verifierはテスト終了後の検証を行うメソッドを提供します。ErrorCollectorの親クラスです。</p>
+
+<div class="code">
+<pre class="brush:java;highlight: [7,17,18,20];">
+package tryjunit4.rule;
+
+import static org.junit.Assert.assertTrue;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.Verifier;
+import org.junit.runner.JUnitCore;
+
+public class VerifierTest {
+	public static void main(String[] args) {
+		JUnitCore.main(VerifierTest.class.getName());
+	}
+
+	private boolean success;
+
+	@Rule
+	public Verifier verifier = new Verifier() {
+		@Override
+		public void verify() {
+			assertTrue(success);
+		}
+	};
+
+	@Test
+	public void testSuccessCase() {
+		success = true;
+		System.out.println("I am testSuccessCase() method.");
+	}
+
+	@Test
+	public void testFailureCase() {
+		success = false;
+		System.out.println("I am testFailureCase() method.");
+	}
+}
+</pre>
+</div>
+
+<p>実行結果(スタックトレースが長いので適宜省略します。)</p>
+<pre class="result">
+$ java tryjunit4.rule.VerifierTest
+JUnit version 4.11
+.I am testSuccessCase() method.
+.I am testFailureCase() method.
+E
+Time: 0.006
+There was 1 failure:
+1) testFailureCase(tryjunit4.rule.VerifierTest)
+java.lang.AssertionError
+	at org.junit.Assert.fail(Assert.java:86)
+	at org.junit.Assert.assertTrue(Assert.java:41)
+	at org.junit.Assert.assertTrue(Assert.java:52)
+	at tryjunit4.rule.VerifierTest$1.verify(VerifierTest.java:21)
+ーー省略ーー
+	at tryjunit4.rule.VerifierTest.main(VerifierTest.java:12)
+
+FAILURES!!!
+Tests run: 2,  Failures: 1
+
+$
+</pre>
+
+<p>
+テストメソッドを実行後、verify()メソッドが実行されます。（21行目）テスト成功ならそのまま終了し、失敗なら
+AssertionErrorをスローします。
+</p>
+
+
+<h2 id="ClassRule">クラス単位での共通処理</h2>
+
+<p>
+今までのRuleは、テストメソッド単位に共通処理を実行していました。
+ClassRuleではテストメソッド実行単位でなくテストクラスの単位での共通処理を管理できます。
+</p>
+
+
+<div class="code">
+<pre class="brush:java;highlight: [3,13];">
+package tryjunit4.rule;
+
+import org.junit.ClassRule;
+import org.junit.Test;
+import org.junit.rules.ExternalResource;
+import org.junit.runner.JUnitCore;
+
+public class ClassRuleTest {
+	public static void main(String[] args) {
+		JUnitCore.main(ClassRuleTest.class.getName());
+	}
+
+	@ClassRule
+	public static ExternalResource externalResource = new ExternalResource() {
+		@Override
+		protected void before() {
+			System.out.println("I am before() method.");
+		};
+
+		@Override
+		protected void after() {
+			System.out.println("I am after() method.");
+		};
+	};
+
+	@Test
+	public void testNantoka() {
+		System.out.println("I am testNantoka() method.");
+	}
+
+	@Test
+	public void testKantoka() {
+		System.out.println("I am testKantoka() method.");
+
+	}
+
+	@Test
+	public void testDousita() {
+		System.out.println("I am testDousita() method.");
+	}
+}
+</pre>
+</div>
+<p>実行結果</p>
+<pre class="result">
+$ java tryjunit4.rule.ClassRuleTest
+JUnit version 4.11
+I am before() method.
+.I am testKantoka() method.
+.I am testNantoka() method.
+.I am testDousita() method.
+I am after() method.
+
+Time: 0.012
+
+OK (3 tests)
+
+$
+</pre>
+<p>
+<a href="http://junit-team.github.com/junit/javadoc/4.10/org/junit/ClassRule.html">ClassRule</a>
+をexternalResourceフィールドに適用しこれをstaticにします。すると、
+<a href="tryjunit4.html#validateBeforeAfter">@BeforeClass,@Before,@AfterClass,@Afterそれぞれの違いを検証する。</a>で検証した@BeforeClass と@AfterClassと同様の挙動になります。
+主にExternalResourceを使って、たとえばDB接続の開始と終了の処理を行う使い方になるでしょう。
+</p>
+
+
+
+<h2 id="RuleChain">Ruleが実行される順序の制御</h2>
+
+<p>
+今まで出した例ではRuleは１クラスに１個だけでした。実際は複数設定出来ます。この場合、Ruleはどういう順序で実行されるでしょうか？
+<a href="http://junit-team.github.com/junit/javadoc/4.10/org/junit/Rule.html">
+RuleのAPIリファレンス</a>
+によれば、「Ruleが付与されているフィールド・メソッドが複数あった場合、
+実行される順序はJavaVMのリフレクションAPIの実装に依存する。」とのことです。
+つまり、ソースコード上のフィールドの順序は実際の実行順序と全く関係がないということです。
+ではどうするか？実行されるRuleの順序を決定するにはRuleChainを使います。
+</p>
+
+
+<div class="code">
+<pre class="brush:java;highlight: [5,15];">
+package tryjunit4.rule;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.RuleChain;
+import org.junit.rules.TestRule;
+import org.junit.runner.JUnitCore;
+
+public class RuleChainTest {
+	public static void main(String[] args) {
+		JUnitCore.main(RuleChainTest.class.getName());
+	}
+
+	@Rule
+	public TestRule chain = RuleChain
+			.outerRule(new LoggingRule("outer rule"))
+			.around(new LoggingRule("middle rule"))
+			.around(new LoggingRule("inner rule"));
+
+	@Rule
+	public LoggingRule log1 = new LoggingRule("log1");
+	@Rule
+	public LoggingRule log2 = new LoggingRule("log2");
+	@Rule
+	public LoggingRule log3 = new LoggingRule("log3");
+
+	@Test
+	public void testNantoka() {
+	}
+}
+</pre>
+</div>
+<p></p>
+<div class="code">
+<pre class="brush:java;highlight: [];">
+package tryjunit4.rule;
+
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
+
+public class LoggingRule extends TestWatcher {
+	String message;
+	LoggingRule(String message) {
+		this.message = message;
+	}
+	@Override
+	protected void starting(Description d) {
+		System.out.printf("starting  %s %n", message);
+	}
+
+	@Override
+	protected void finished(Description d) {
+		System.out.printf("finished  %s %n", message);
+	}
+}
+</pre>
+</div>
+
+
+<p>実行結果</p>
+<pre class="result">
+$ java tryjunit4.rule.RuleChainTest
+JUnit version 4.11
+.starting  log3 
+starting  log2 
+starting  log1 
+starting  outer rule 
+starting  middle rule 
+starting  inner rule 
+finished  inner rule 
+finished  middle rule 
+finished  outer rule 
+finished  log1 
+finished  log2 
+finished  log3 
+
+Time: 0.007
+
+OK (1 test)
+
+$ 
+</pre>
+<p>
+15行目のRuleChainのメソッド呼び出しで、LoggingRuleを組みあわせて順序を決定しています。
+20~25行目でもRuleを設定しています。フィールド定義の逆順のようですが、これはたまたまMacのJavaVMがそうだったというだけのことです。
+別のJavaVMでは違った順序になるかもしれません。
+</p>
+
+<h2 id="reference">参考リンク</h2>
+<ul>
+<li>
+<a href="http://junit-team.github.com/junit/javadoc/4.10/" target="_blank">JUnit4.10 API</a> 4.11のAPIは公開していない様子。
+</li>
+<li>
+<a href="https://github.com/junit-team/junit/wiki" target="_blank">JUnit Wiki</a>
+</li>
+<li>
+<a href="tryjunit4.html" target="_blank">JUnit4をやってみよう</a>
+</li>
+</ul>
+
+<hr>
+<p>
+<img src="../88x31.png" alt="creative commons BY"/>
+<br>
+この文書は
+<a href="http://creativecommons.org/licenses/by/2.1/jp/">表示 2.1 日本 (CC BY 2.1) </a>
+によってライセンスされます。
+
+</p>
+
+<p><a href="../index.html">トップページに戻る</a></p>
+
+<script type="text/javascript">
+     SyntaxHighlighter.all()
+</script>
+
+
+
+
+</body>
+</html>

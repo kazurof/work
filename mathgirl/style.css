@@ -1,0 +1,18 @@
+
+
+img{
+    border:black 0px;
+}
+
+.netabarewarn {
+	color:red;
+	font-weight: bold;
+}
+
+.scenario {
+	border: 1px solid;
+	margin: 0 50px;
+	padding: 2px;
+}
+
+

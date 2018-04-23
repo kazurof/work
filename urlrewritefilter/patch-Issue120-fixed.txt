@@ -1,0 +1,1364 @@
+Index: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/FunctionReplacer.java
+===================================================================
+--- src/main/java/org/tuckey/web/filters/urlrewrite/substitution/FunctionReplacer.java	(revision 442)
++++ src/main/java/org/tuckey/web/filters/urlrewrite/substitution/FunctionReplacer.java	(working copy)
+@@ -34,7 +34,9 @@
+  */
+ package org.tuckey.web.filters.urlrewrite.substitution;
+ 
+-import org.tuckey.web.filters.urlrewrite.functions.StringFunctions;
++import org.tuckey.web.filters.urlrewrite.substitution.interpreter.Context;
++import org.tuckey.web.filters.urlrewrite.substitution.interpreter.ParseException;
++import org.tuckey.web.filters.urlrewrite.substitution.interpreter.ToValueNode;
+ import org.tuckey.web.filters.urlrewrite.utils.Log;
+ 
+ import java.util.Collections;
+@@ -63,96 +65,16 @@
+     }
+ 
+ 
+-    public String substitute(String subjectOfReplacement, SubstitutionContext ctx,
+-                             SubstitutionFilterChain nextFilter) {
+-        Matcher functionMatcher = functionPattern.matcher(subjectOfReplacement);
+-        StringBuffer sb = new StringBuffer();
+-        boolean anyMatches = false;
+-
+-        int lastAppendPosition = 0;
+-        while (functionMatcher.find()) {
+-            anyMatches = true;
+-            int groupCount = functionMatcher.groupCount();
+-            if (groupCount < 1) {
+-                log.error("group count on function finder regex is not as expected");
+-                if (log.isDebugEnabled()) {
+-                    log.error("functionMatcher: " + functionMatcher.toString());
+-                }
+-                continue;
+-            }
+-            String varStr = functionMatcher.group(1);
+-            String varValue = "";
+-            if (varStr != null) {
+-                varValue = functionReplace(varStr, ctx, nextFilter);
+-                if (log.isDebugEnabled()) log.debug("resolved to: " + varValue);
+-            } else {
+-                if (log.isDebugEnabled()) log.debug("variable reference is null " + functionMatcher);
+-            }
+-            String stringBeforeMatch = subjectOfReplacement.substring(lastAppendPosition, functionMatcher.start());
+-            sb.append(nextFilter.substitute(stringBeforeMatch, ctx));
+-            sb.append(varValue);
+-            lastAppendPosition = functionMatcher.end();
++    public String substitute(String subjectOfReplacement, SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++        Context context = new Context(subjectOfReplacement);
++        ToValueNode node = new ToValueNode(ctx, nextFilter);
++        try {
++            node.parse(context);
++            return node.evaluate();
++        } catch (ParseException e) {
++            log.error(e.getMessage(), e);
+         }
+-        if (anyMatches) {
+-            String stringAfterMatch = subjectOfReplacement.substring(lastAppendPosition);
+-            sb.append(nextFilter.substitute(stringAfterMatch, ctx));
+-            log.debug("replaced sb is " + sb);
+-            return sb.toString();
+-        }
+-        return nextFilter.substitute(subjectOfReplacement, ctx);
++        return subjectOfReplacement;
+     }
+ 
+-
+-    /**
+-     * Handles the fetching of the variable value from the request.
+-     */
+-    private String functionReplace(String originalVarStr, SubstitutionContext ctx, final SubstitutionFilterChain nextFilter) {
+-        // get the sub name if any ie for headers etc header:user-agent
+-        String varSubName = null;
+-        String varType;
+-        int colonIdx = originalVarStr.indexOf(":");
+-        if (colonIdx != -1 && colonIdx + 1 < originalVarStr.length()) {
+-            varSubName = originalVarStr.substring(colonIdx + 1);
+-            varType = originalVarStr.substring(0, colonIdx);
+-            if (log.isDebugEnabled()) log.debug("function ${" + originalVarStr + "} type: " + varType +
+-                    ", name: '" + varSubName + "'");
+-        } else {
+-            varType = originalVarStr;
+-            if (log.isDebugEnabled()) log.debug("function ${" + originalVarStr + "} type: " + varType);
+-        }
+-        String functionResult = "";
+-        SubstitutionFilterChain redoFunctionFilter = new SubstitutionFilterChain() {
+-            public String substitute(String string, SubstitutionContext ctx) {
+-                return FunctionReplacer.this.substitute(string, ctx, nextFilter);
+-            }
+-
+-        };
+-        // check for some built in functions
+-        if ("replace".equalsIgnoreCase(varType) || "replaceAll".equalsIgnoreCase(varType)) {
+-            functionResult = StringFunctions.replaceAll(varSubName, redoFunctionFilter, ctx);
+-        } else if ("replaceFirst".equalsIgnoreCase(varType)) {
+-            functionResult = StringFunctions.replaceFirst(varSubName, redoFunctionFilter, ctx);
+-        } else if ("escape".equalsIgnoreCase(varType)) {
+-            functionResult = StringFunctions.escape(varSubName, redoFunctionFilter, ctx);
+-        } else if ("escapePath".equalsIgnoreCase(varType)) {
+-            functionResult = StringFunctions.escapePath(varSubName, redoFunctionFilter, ctx);
+-        } else if ("unescape".equalsIgnoreCase(varType)) {
+-            functionResult = StringFunctions.unescape(varSubName, redoFunctionFilter, ctx);
+-        } else if ("unescapePath".equalsIgnoreCase(varType)) {
+-            functionResult = StringFunctions.unescapePath(varSubName, redoFunctionFilter, ctx);
+-        } else if ("lower".equalsIgnoreCase(varType) || "toLower".equalsIgnoreCase(varType)) {
+-            functionResult = StringFunctions.toLower(varSubName, redoFunctionFilter, ctx);
+-        } else if ("upper".equalsIgnoreCase(varType) || "toUpper".equalsIgnoreCase(varType)) {
+-            functionResult = StringFunctions.toUpper(varSubName, redoFunctionFilter, ctx);
+-        } else if ("trim".equalsIgnoreCase(varType)) {
+-            functionResult = StringFunctions.trim(varSubName, redoFunctionFilter, ctx);
+-        } else if ("length".equalsIgnoreCase(varType)) {
+-            functionResult = StringFunctions.length(varSubName, redoFunctionFilter, ctx);
+-        } else {
+-            log.error("function ${" + originalVarStr + "} type '" + varType + "' not a valid type");
+-        }
+-        return functionResult;
+-    }
+-
+-
+ }
+Index: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/Context.java
+===================================================================
+--- src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/Context.java	(revision 0)
++++ src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/Context.java	(working copy)
+@@ -0,0 +1,40 @@
++/*
++ * Copyright (c) 2013, Kazuro Fukuhara All rights reserved.
++ * Licensed under the BSD License. see http://opensource.org/licenses/BSD-3-Clause 
++ */
++
++package org.tuckey.web.filters.urlrewrite.substitution.interpreter;
++
++/**
++ * @author <a href="https://twitter.com/kazurof">Kazuro Fukuhara</a>
++ */
++public class Context {
++
++    private Tokenizer tokenizer;
++    private String currentToken;
++
++    public Context(String text) {
++        tokenizer = new Tokenizer(text);
++        nextToken();
++    }
++
++    public String nextToken() {
++        if (tokenizer.hasNext()) {
++            currentToken = tokenizer.next();
++        } else {
++            currentToken = null;
++        }
++        return currentToken;
++    }
++
++    public String currentToken() {
++        return currentToken;
++    }
++
++    public void skipToken(String token) throws ParseException {
++        if (!token.equals(currentToken)) {
++            throw new ParseException("Warning: " + token + " is expected, but " + currentToken + " is found.");
++        }
++        nextToken();
++    }
++}
+
+Property changes on: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/Context.java
+___________________________________________________________________
+Added: svn:keywords
+## -0,0 +1 ##
++Id Author Date Revision HeadURL
+\ No newline at end of property
+Index: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ElementNode.java
+===================================================================
+--- src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ElementNode.java	(revision 0)
++++ src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ElementNode.java	(working copy)
+@@ -0,0 +1,45 @@
++/*
++ * Copyright (c) 2013, Kazuro Fukuhara All rights reserved.
++ * Licensed under the BSD License. see http://opensource.org/licenses/BSD-3-Clause 
++ */
++
++package org.tuckey.web.filters.urlrewrite.substitution.interpreter;
++
++import org.tuckey.web.filters.urlrewrite.substitution.SubstitutionContext;
++import org.tuckey.web.filters.urlrewrite.substitution.SubstitutionFilterChain;
++
++/**
++ * &lt;element&gt; ::= &lt;value&gt; | &lt;function&gt;
++ * 
++ * @author <a href="https://twitter.com/kazurof">Kazuro Fukuhara</a>
++ */
++public class ElementNode implements Node {
++    Node node;
++    SubstitutionContext ctx;
++    SubstitutionFilterChain nextFilter;
++
++    ElementNode(SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++        this.ctx = ctx;
++        this.nextFilter = nextFilter;
++    }
++
++    public void parse(Context context) throws ParseException {
++        if (context.currentToken().startsWith(Tokenizer.FUNC_START)) {
++            node = new FunctionNode(ctx, nextFilter);
++            node.parse(context);
++        } else {
++            node = new ValueNode(ctx, nextFilter);
++            node.parse(context);
++        }
++    }
++
++    @Override
++    public String toString() {
++        return node.toString();
++    }
++
++    public String evaluate() {
++        return node.evaluate();
++    }
++
++}
+
+Property changes on: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ElementNode.java
+___________________________________________________________________
+Added: svn:keywords
+## -0,0 +1 ##
++Id Author Date Revision HeadURL
+\ No newline at end of property
+Index: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/Function.java
+===================================================================
+--- src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/Function.java	(revision 0)
++++ src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/Function.java	(working copy)
+@@ -0,0 +1,105 @@
++/*
++ * Copyright (c) 2013, Kazuro Fukuhara All rights reserved.
++ * Licensed under the BSD License. see http://opensource.org/licenses/BSD-3-Clause 
++ */
++
++package org.tuckey.web.filters.urlrewrite.substitution.interpreter;
++
++import org.tuckey.web.filters.urlrewrite.functions.StringFunctions;
++import org.tuckey.web.filters.urlrewrite.substitution.SubstitutionContext;
++import org.tuckey.web.filters.urlrewrite.substitution.SubstitutionFilterChain;
++
++/**
++ * 
++ * @author <a href="https://twitter.com/kazurof">Kazuro Fukuhara</a>
++ */
++public enum Function {
++
++    REPLACE {
++        @Override
++        String execute(String arg, SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++            return REPLACEALL.execute(arg, ctx, nextFilter);
++        }
++    },
++
++    REPLACEALL {
++        @Override
++        String execute(String args, SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++            return StringFunctions.replaceAll(args, nextFilter, ctx);
++        }
++    },
++
++    REPLACEFIRST {
++        @Override
++        String execute(String arg, SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++            return StringFunctions.replaceFirst(arg, nextFilter, ctx);
++
++        }
++    },
++    ESCAPE {
++        @Override
++        String execute(String arg, SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++            return StringFunctions.escape(arg, nextFilter, ctx);
++
++        }
++    },
++    ESCAPEPATH {
++        @Override
++        String execute(String arg, SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++            return StringFunctions.escapePath(arg, nextFilter, ctx);
++        }
++    },
++
++    UNESCAPE {
++        @Override
++        String execute(String arg, SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++            return StringFunctions.unescape(arg, nextFilter, ctx);
++        }
++    },
++    UNESCAPEPATH {
++        @Override
++        String execute(String arg, SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++            return StringFunctions.unescapePath(arg, nextFilter, ctx);
++        }
++    },
++    LOWER {
++        @Override
++        String execute(String arg, SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++            return TOLOWER.execute(arg, ctx, nextFilter);
++        }
++    },
++    UPPER {
++        @Override
++        String execute(String arg, SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++            return TOUPPER.execute(arg, ctx, nextFilter);
++        }
++    },
++    TOLOWER {
++        @Override
++        String execute(String arg, SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++            return StringFunctions.toLower(arg, nextFilter, ctx);
++
++        }
++    },
++    TOUPPER {
++        @Override
++        String execute(String arg, SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++            return StringFunctions.toUpper(arg, nextFilter, ctx);
++        }
++    },
++    TRIM {
++        @Override
++        String execute(String arg, SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++            return StringFunctions.trim(arg, nextFilter, ctx);
++        }
++    },
++
++    LENGTH {
++        @Override
++        String execute(String arg, SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++            return StringFunctions.length(arg, nextFilter, ctx);
++        }
++    };
++
++    abstract String execute(String arg, SubstitutionContext ctx, SubstitutionFilterChain nextFilter);
++}
+
+Property changes on: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/Function.java
+___________________________________________________________________
+Added: svn:keywords
+## -0,0 +1 ##
++Id Author Date Revision HeadURL
+\ No newline at end of property
+Index: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionContentNode.java
+===================================================================
+--- src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionContentNode.java	(revision 0)
++++ src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionContentNode.java	(working copy)
+@@ -0,0 +1,46 @@
++/*
++ * Copyright (c) 2013, Kazuro Fukuhara All rights reserved.
++ * Licensed under the BSD License. see http://opensource.org/licenses/BSD-3-Clause 
++ */
++
++package org.tuckey.web.filters.urlrewrite.substitution.interpreter;
++
++import org.tuckey.web.filters.urlrewrite.substitution.SubstitutionContext;
++import org.tuckey.web.filters.urlrewrite.substitution.SubstitutionFilterChain;
++
++/**
++ * &lt;functioncontent&gt; ::= &lt;functionName&gt; : &lt;param&gt;
++ * 
++ * @author <a href="https://twitter.com/kazurof">Kazuro Fukuhara</a>
++ */
++public class FunctionContentNode implements Node {
++    private FunctionNameNode funcNameNode;
++    private ParamNode paramNode;
++
++    SubstitutionContext ctx;
++    SubstitutionFilterChain nextFilter;
++
++    FunctionContentNode(SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++        this.ctx = ctx;
++        this.nextFilter = nextFilter;
++    }
++
++    public void parse(Context context) throws ParseException {
++        funcNameNode = new FunctionNameNode();
++        funcNameNode.parse(context);
++        context.skipToken(Tokenizer.PARAM_DELIMITER);
++        paramNode = new ParamNode(ctx, nextFilter);
++        paramNode.parse(context);
++    }
++
++    public String evaluate() {
++        Function func = funcNameNode.getFunction();
++        String param = paramNode.evaluate();
++        return func.execute(param, ctx, nextFilter);
++    }
++
++    @Override
++    public String toString() {
++        return funcNameNode + Tokenizer.PARAM_DELIMITER + paramNode;
++    }
++}
+
+Property changes on: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionContentNode.java
+___________________________________________________________________
+Added: svn:keywords
+## -0,0 +1 ##
++Id Author Date Revision HeadURL
+\ No newline at end of property
+Index: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionNameNode.java
+===================================================================
+--- src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionNameNode.java	(revision 0)
++++ src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionNameNode.java	(working copy)
+@@ -0,0 +1,46 @@
++/*
++ * Copyright (c) 2013, Kazuro Fukuhara All rights reserved.
++ * Licensed under the BSD License. see http://opensource.org/licenses/BSD-3-Clause 
++ */
++
++package org.tuckey.web.filters.urlrewrite.substitution.interpreter;
++
++/**
++ * 
++ * &lt;functionName&gt; ::= replace | replaceAll | replaceFirst | escape |
++ * escapePath | lower | upper | toLower | toUpper | trim | length
++ * 
++ * @author <a href="https://twitter.com/kazurof">Kazuro Fukuhara</a>
++ */
++public class FunctionNameNode implements Node {
++    private Function function;
++
++    public void parse(Context context) throws ParseException {
++        String name = context.currentToken();
++        context.skipToken(name);
++        try {
++            function = Function.valueOf(name.toUpperCase());
++        } catch (IllegalArgumentException e) {
++            throw new ParseException(e.getMessage());
++        } catch (NullPointerException e) {
++            throw new ParseException(e.getMessage());
++        }
++    }
++
++    @Override
++    public String toString() {
++        return function.toString().toLowerCase();
++    }
++
++    public Function getFunction() {
++        return function;
++    }
++
++    /**
++     * return function name. but this is no mean because {@link #getFunction()}
++     * return this as {@link Function}
++     */
++    public String evaluate() {
++        return function.toString();
++    }
++}
+
+Property changes on: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionNameNode.java
+___________________________________________________________________
+Added: svn:keywords
+## -0,0 +1 ##
++Id Author Date Revision HeadURL
+\ No newline at end of property
+Index: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionNode.java
+===================================================================
+--- src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionNode.java	(revision 0)
++++ src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionNode.java	(working copy)
+@@ -0,0 +1,43 @@
++/*
++ * Copyright (c) 2013, Kazuro Fukuhara All rights reserved.
++ * Licensed under the BSD License. see http://opensource.org/licenses/BSD-3-Clause 
++ */
++
++package org.tuckey.web.filters.urlrewrite.substitution.interpreter;
++
++import org.tuckey.web.filters.urlrewrite.substitution.SubstitutionContext;
++import org.tuckey.web.filters.urlrewrite.substitution.SubstitutionFilterChain;
++
++/**
++ * &lt;function&gt; ::= ${ &lt;functionContent&gt; }
++ * 
++ * 
++ * @author <a href="https://twitter.com/kazurof">Kazuro Fukuhara</a>
++ */
++public class FunctionNode implements Node {
++
++    FunctionContentNode content;
++    SubstitutionContext ctx;
++    SubstitutionFilterChain nextFilter;
++
++    FunctionNode(SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++        this.ctx = ctx;
++        this.nextFilter = nextFilter;
++    }
++
++    public void parse(Context context) throws ParseException {
++        context.skipToken(Tokenizer.FUNC_START);
++        content = new FunctionContentNode(ctx, nextFilter);
++        content.parse(context);
++        context.skipToken(Tokenizer.FUNC_END);
++    }
++
++    @Override
++    public String toString() {
++        return Tokenizer.FUNC_START + content + Tokenizer.FUNC_END;
++    }
++
++    public String evaluate() {
++        return content.evaluate();
++    }
++}
+
+Property changes on: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionNode.java
+___________________________________________________________________
+Added: svn:keywords
+## -0,0 +1 ##
++Id Author Date Revision HeadURL
+\ No newline at end of property
+Index: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/Node.java
+===================================================================
+--- src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/Node.java	(revision 0)
++++ src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/Node.java	(working copy)
+@@ -0,0 +1,21 @@
++/*
++ * Copyright (c) 2013, Kazuro Fukuhara All rights reserved.
++ * Licensed under the BSD License. see http://opensource.org/licenses/BSD-3-Clause 
++ */
++
++package org.tuckey.web.filters.urlrewrite.substitution.interpreter;
++
++/**
++ * Abstraction of each node in parse tree.
++ * 
++ * @author <a href="https://twitter.com/kazurof">Kazuro Fukuhara</a>
++ */
++public interface Node {
++    void parse(Context context) throws ParseException;
++
++    /**
++     * process this node. return value will differ for each concrete class.
++     * 
++     */
++    String evaluate();
++}
+
+Property changes on: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/Node.java
+___________________________________________________________________
+Added: svn:keywords
+## -0,0 +1 ##
++Id Author Date Revision HeadURL
+\ No newline at end of property
+Index: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ParamNode.java
+===================================================================
+--- src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ParamNode.java	(revision 0)
++++ src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ParamNode.java	(working copy)
+@@ -0,0 +1,80 @@
++/*
++ * Copyright (c) 2013, Kazuro Fukuhara All rights reserved.
++ * Licensed under the BSD License. see http://opensource.org/licenses/BSD-3-Clause 
++ */
++
++package org.tuckey.web.filters.urlrewrite.substitution.interpreter;
++
++import org.tuckey.web.filters.urlrewrite.substitution.SubstitutionContext;
++import org.tuckey.web.filters.urlrewrite.substitution.SubstitutionFilterChain;
++
++import java.util.ArrayList;
++import java.util.List;
++
++/**
++ * &lt;param&gt; ::= &lt;element&gt; * | &lt;element&gt; * : &lt;param&gt;
++ * 
++ * @author <a href="https://twitter.com/kazurof">Kazuro Fukuhara</a>
++ */
++public class ParamNode implements Node {
++    List<ElementNode> elementList;
++    ParamNode secondElement;
++
++    SubstitutionContext ctx;
++    SubstitutionFilterChain nextFilter;
++
++    ParamNode(SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++        this.ctx = ctx;
++        this.nextFilter = nextFilter;
++        this.elementList = new ArrayList<ElementNode>();
++    }
++
++    public void parse(Context context) throws ParseException {
++        while (true) {
++            if (context.currentToken() != null) {
++                if (context.currentToken().equals(Tokenizer.FUNC_START)) {
++                    ElementNode en = new ElementNode(ctx, nextFilter);
++                    en.parse(context);
++                    elementList.add(en);
++                } else if (context.currentToken().equals(Tokenizer.PARAM_DELIMITER)) {
++                    context.skipToken(Tokenizer.PARAM_DELIMITER);
++                    secondElement = new ParamNode(ctx, nextFilter);
++                    secondElement.parse(context);
++                } else if (context.currentToken().equals(Tokenizer.FUNC_END)) {
++                    break;
++                } else {
++                    ElementNode en = new ElementNode(ctx, nextFilter);
++                    en.parse(context);
++                    elementList.add(en);
++                }
++            } else {
++                break;
++            }
++        }
++    }
++
++    public String evaluate() {
++        StringBuilder sb = new StringBuilder();
++        for (ElementNode en : elementList) {
++            sb.append(en.evaluate());
++        }
++        if (secondElement != null) {
++            sb.append(Tokenizer.PARAM_DELIMITER);
++            sb.append(secondElement.evaluate());
++        }
++        return sb.toString();
++    }
++
++    @Override
++    public String toString() {
++        StringBuilder sb = new StringBuilder();
++        for (ElementNode en : elementList) {
++            sb.append(en.toString());
++        }
++        if (secondElement != null) {
++            sb.append(Tokenizer.PARAM_DELIMITER);
++            sb.append(secondElement.toString());
++        }
++        return sb.toString();
++    }
++}
+
+Property changes on: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ParamNode.java
+___________________________________________________________________
+Added: svn:keywords
+## -0,0 +1 ##
++Id Author Date Revision HeadURL
+\ No newline at end of property
+Index: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ParseException.java
+===================================================================
+--- src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ParseException.java	(revision 0)
++++ src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ParseException.java	(working copy)
+@@ -0,0 +1,20 @@
++/*
++ * Copyright (c) 2013, Kazuro Fukuhara All rights reserved.
++ * Licensed under the BSD License. see http://opensource.org/licenses/BSD-3-Clause 
++ */
++
++package org.tuckey.web.filters.urlrewrite.substitution.interpreter;
++
++/**
++ * represents failure of parse in &quot;to&quot; value
++ * 
++ * @author <a href="https://twitter.com/kazurof">Kazuro Fukuhara</a>
++ */
++public final class ParseException extends Exception {
++    private static final long serialVersionUID = 1L;
++
++    public ParseException(String arg0) {
++        super(arg0);
++    }
++
++}
+
+Property changes on: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ParseException.java
+___________________________________________________________________
+Added: svn:keywords
+## -0,0 +1 ##
++Id Author Date Revision HeadURL
+\ No newline at end of property
+Index: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ToValueNode.java
+===================================================================
+--- src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ToValueNode.java	(revision 0)
++++ src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ToValueNode.java	(working copy)
+@@ -0,0 +1,61 @@
++/*
++ * Copyright (c) 2013, Kazuro Fukuhara All rights reserved.
++ * Licensed under the BSD License. see http://opensource.org/licenses/BSD-3-Clause 
++ */
++
++package org.tuckey.web.filters.urlrewrite.substitution.interpreter;
++
++import org.tuckey.web.filters.urlrewrite.substitution.SubstitutionContext;
++import org.tuckey.web.filters.urlrewrite.substitution.SubstitutionFilterChain;
++
++import java.util.ArrayList;
++import java.util.List;
++
++/**
++ * 
++ * &lt;tovalue&gt; ::= &lt;element&gt; *
++ * 
++ * @author <a href="https://twitter.com/kazurof">Kazuro Fukuhara</a>
++ */
++public class ToValueNode implements Node {
++
++    List<Node> elementList = new ArrayList<Node>();
++
++    SubstitutionContext ctx;
++    SubstitutionFilterChain nextFilter;
++
++    public ToValueNode(SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++        this.ctx = ctx;
++        this.nextFilter = nextFilter;
++    }
++
++    public void parse(Context context) throws ParseException {
++        while (true) {
++            if (context.currentToken() != null) {
++                Node oneNode = new ElementNode(ctx, nextFilter);
++                oneNode.parse(context);
++                elementList.add(oneNode);
++            } else {
++                break;
++            }
++        }
++    }
++
++    @Override
++    public String toString() {
++        StringBuilder sb = new StringBuilder();
++        for (Node content : elementList) {
++            sb.append(content.toString());
++        }
++        return sb.toString();
++    }
++
++    public String evaluate() {
++        StringBuilder sb = new StringBuilder();
++        for (Node content : elementList) {
++            sb.append(content.evaluate());
++        }
++        return sb.toString();
++    }
++
++}
+
+Property changes on: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ToValueNode.java
+___________________________________________________________________
+Added: svn:keywords
+## -0,0 +1 ##
++Id Author Date Revision HeadURL
+\ No newline at end of property
+Index: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/Tokenizer.java
+===================================================================
+--- src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/Tokenizer.java	(revision 0)
++++ src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/Tokenizer.java	(working copy)
+@@ -0,0 +1,96 @@
++/*
++ * Copyright (c) 2013, Kazuro Fukuhara All rights reserved.
++ * Licensed under the BSD License. see http://opensource.org/licenses/BSD-3-Clause 
++ */
++
++package org.tuckey.web.filters.urlrewrite.substitution.interpreter;
++
++import java.util.ArrayList;
++import java.util.Collections;
++import java.util.HashSet;
++import java.util.List;
++import java.util.Set;
++
++/**
++ * Tokenize &quot;to&quot; value.
++ * 
++ * @author <a href="https://twitter.com/kazurof">Kazuro Fukuhara</a>
++ */
++public class Tokenizer {
++    static final String FUNC_START = "${";
++    static final String FUNC_END = "}";
++    static final String PARAM_DELIMITER = ":";
++
++    private static final String[] TOKEN_DELIITER_ARY = { FUNC_START, FUNC_END, PARAM_DELIMITER };
++
++    List<String> tokens = new ArrayList<String>();
++    int pos = 0;
++
++    Tokenizer(String src) {
++        int currentPos = 0;
++        int startPos = 0;
++        int endPos = 0;
++        int paramPos = 0;
++
++        while (currentPos < src.length()) {
++
++            startPos = src.indexOf(FUNC_START, currentPos);
++            endPos = src.indexOf(FUNC_END, currentPos);
++            paramPos = src.indexOf(PARAM_DELIMITER, currentPos);
++
++            Set<Integer> posSet = new HashSet<Integer>();
++
++            posSet.add(startPos);
++            posSet.add(endPos);
++            posSet.add(paramPos);
++
++            posSet.remove(-1);
++            if (posSet.isEmpty()) {
++                tokens.add(src.substring(currentPos));
++                break;
++            }
++
++            List<Integer> posList = new ArrayList<Integer>(posSet);
++            int candidatePos = Collections.min(posList);
++            if (candidatePos != 0 && currentPos != candidatePos) {
++                String newToken = src.substring(currentPos, candidatePos);
++                if (src.charAt(candidatePos) == FUNC_END.charAt(0) && newToken.contains("%{")) {
++                    newToken = newToken + FUNC_END;
++                    candidatePos++;
++                }
++                tokens.add(newToken);
++                currentPos += newToken.length();
++            }
++            if (candidatePos != src.length()) {
++                for (String tokenDelimiter : TOKEN_DELIITER_ARY) {
++                    if (src.charAt(candidatePos) == tokenDelimiter.charAt(0)) {
++                        tokens.add(tokenDelimiter);
++                        currentPos += tokenDelimiter.length();
++                    }
++                }
++            }
++        }
++    }
++
++    public boolean hasNext() {
++        return pos != tokens.size();
++    }
++
++    public String next() {
++        String candidate = tokens.get(pos);
++        pos++;
++        return candidate;
++    }
++
++    @Override
++    public String toString() {
++        StringBuilder builder = new StringBuilder();
++        builder.append("Tokenizer [tokens=");
++        builder.append(tokens);
++        builder.append(", pos=");
++        builder.append(pos);
++        builder.append("]");
++        return builder.toString();
++    }
++
++}
+
+Property changes on: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/Tokenizer.java
+___________________________________________________________________
+Added: svn:keywords
+## -0,0 +1 ##
++Id Author Date Revision HeadURL
+\ No newline at end of property
+Index: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ValueNode.java
+===================================================================
+--- src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ValueNode.java	(revision 0)
++++ src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ValueNode.java	(working copy)
+@@ -0,0 +1,44 @@
++/*
++ * Copyright (c) 2013, Kazuro Fukuhara All rights reserved.
++ * Licensed under the BSD License. see http://opensource.org/licenses/BSD-3-Clause 
++ */
++
++package org.tuckey.web.filters.urlrewrite.substitution.interpreter;
++
++import org.tuckey.web.filters.urlrewrite.substitution.SubstitutionContext;
++import org.tuckey.web.filters.urlrewrite.substitution.SubstitutionFilterChain;
++
++/**
++ * &lt;value&gt; ::= any string
++ * 
++ * @author <a href="https://twitter.com/kazurof">Kazuro Fukuhara</a>
++ */
++public class ValueNode implements Node {
++    String value;
++
++    SubstitutionContext ctx;
++    SubstitutionFilterChain nextFilter;
++
++    ValueNode(SubstitutionContext ctx, SubstitutionFilterChain nextFilter) {
++        this.ctx = ctx;
++        this.nextFilter = nextFilter;
++    }
++
++    public void parse(Context context) throws ParseException {
++        value = context.currentToken();
++        context.skipToken(value);
++        if (value.equals(Tokenizer.FUNC_START)) {
++            throw new ParseException(value + " starts ${");
++        }
++    }
++
++    @Override
++    public String toString() {
++        return value;
++    }
++
++    public String evaluate() {
++        return nextFilter.substitute(value, ctx);
++    }
++
++}
+
+Property changes on: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ValueNode.java
+___________________________________________________________________
+Added: svn:keywords
+## -0,0 +1 ##
++Id Author Date Revision HeadURL
+\ No newline at end of property
+Index: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/package-info.java
+===================================================================
+--- src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/package-info.java	(revision 0)
++++ src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/package-info.java	(working copy)
+@@ -0,0 +1,25 @@
++/*
++ * Copyright (c) 2013, Kazuro Fukuhara All rights reserved.
++ * Licensed under the BSD License. see http://opensource.org/licenses/BSD-3-Clause 
++ */
++
++/**
++ * This package processes function in &quot;to&quot; value with 
++ * <a href="http://en.wikipedia.org/wiki/Interpreter_pattern" >Interpreter pattern</a> .
++ * BNF for Interpreter pattern is below.
++ * <ul>
++ * <li>&lt;tovalue&gt; ::= &lt;element&gt; *</li>
++ * <li>&lt;element&gt; ::= &lt;value&gt; | &lt;function&gt;</li>
++ * <li>&lt;value&gt; ::= any string </li>
++ * <li>&lt;function&gt; ::= ${ &lt;functionContent&gt; }</li>
++ * <li>&lt;functioncontent&gt; ::= &lt;functionName&gt;  : &lt;param&gt;</li>
++ * <li>&lt;param&gt; ::= &lt;element&gt; * | &lt;element&gt; * : &lt;param&gt;</li>
++ * <li>&lt;functionName&gt; ::= replace | replaceAll | replaceFirst | escape | escapePath | lower | upper | toLower | toUpper | trim | length</li>
++ * </ul>
++ * 
++ * 
++ * 
++ * @author <a href="https://twitter.com/kazurof">Kazuro Fukuhara</a>
++ */
++package org.tuckey.web.filters.urlrewrite.substitution.interpreter;
++
+
+Property changes on: src/main/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/package-info.java
+___________________________________________________________________
+Added: svn:keywords
+## -0,0 +1 ##
++Id Author Date Revision HeadURL
+\ No newline at end of property
+Index: src/test/java/org/tuckey/web/filters/urlrewrite/RuleTest.java
+===================================================================
+--- src/test/java/org/tuckey/web/filters/urlrewrite/RuleTest.java	(revision 442)
++++ src/test/java/org/tuckey/web/filters/urlrewrite/RuleTest.java	(working copy)
+@@ -843,4 +843,36 @@
+         NormalRewrittenUrl rewrittenUrl = (NormalRewrittenUrl) rule.matches(request.getRequestURI(), request, response);
+         assertEquals("/en/robots.txt?param1=value1&param2=value2", rewrittenUrl.getTarget());
+     }
++    public void testLowerFunction() throws InvocationTargetException, IOException, ServletException {
++        NormalRule rule = new NormalRule();
++        rule.setFrom("^/lowerMe/([A-Z])+/$");
++        rule.setTo("/lowerMe/${lower:$1}");
++        rule.initialise(new MockServletContext());
++        MockRequest request = new MockRequest("/lowerMe/A/");
++        NormalRewrittenUrl rewrittenUrl = (NormalRewrittenUrl) rule.matches(request.getRequestURI(), request, response);
++        assertEquals("/lowerMe/a", rewrittenUrl.getTarget());
++    }
++    
++    public void testIssue120() throws InvocationTargetException, IOException, ServletException {
++        NormalRule rule = new NormalRule();
++        rule.setFrom("^/test/(.+)\\.html$");
++        rule.setTo("/test/${upper:$1}/${upper:$1}.html");
++        rule.initialise(new MockServletContext());
++        MockRequest request = new MockRequest("/test/test.html");
++        NormalRewrittenUrl rewrittenUrl = (NormalRewrittenUrl) rule.matches(request.getRequestURI(), request, response);
++        assertEquals("/test/TEST/TEST.html", rewrittenUrl.getTarget());
++    }  
++
++    
++    public void testIssue120More() throws InvocationTargetException, IOException, ServletException {
++        NormalRule rule = new NormalRule();
++        rule.setFrom("^/download/(abc+[0-9]{1}z[0-9]{1,9}i)/(.*)/(.*)$");
++        rule.setTo("/file/download?workId=$1&amp;type=${escape:$2}&amp;name=${escape:$3}&amp;originalUrl=%{request-url}");
++        rule.initialise(new MockServletContext());
++        MockRequest request = new MockRequest("/download/abc1z2i/wawawa/readme.txt");
++        request.setRequestURL("dummytesturl");
++        NormalRewrittenUrl rewrittenUrl = (NormalRewrittenUrl) rule.matches(request.getRequestURI(), request, response);
++        assertEquals("/file/download?workId=abc1z2i&amp;type=wawawa&amp;name=readme.txt&amp;originalUrl=dummytesturl",
++                rewrittenUrl.getTarget());
++    }
+ }
+Index: src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ContextTest.java
+===================================================================
+--- src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ContextTest.java	(revision 0)
++++ src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ContextTest.java	(working copy)
+@@ -0,0 +1,35 @@
++package org.tuckey.web.filters.urlrewrite.substitution.interpreter;
++
++import static org.hamcrest.CoreMatchers.is;
++import static org.hamcrest.CoreMatchers.nullValue;
++import static org.junit.Assert.assertThat;
++
++import org.junit.Test;
++
++public class ContextTest {
++
++    @Test
++    public void testContext() {
++        Context target = new Context("${escapePath:UTF-8:a b c : other / path}");
++        assertThat(target.currentToken(), is("${"));
++        assertThat(target.nextToken(), is("escapePath"));
++
++        assertThat(target.nextToken(), is(":"));
++        assertThat(target.nextToken(), is("UTF-8"));
++        assertThat(target.nextToken(), is(":"));
++        assertThat(target.nextToken(), is("a b c "));
++        assertThat(target.nextToken(), is(":"));
++        assertThat(target.nextToken(), is(" other / path"));
++        assertThat(target.nextToken(), is("}"));
++        assertThat(target.nextToken(), nullValue());
++    }
++
++    @Test
++    public void testSkipToken() throws Exception {
++        Context target = new Context("${escapePath:UTF-8:a b c : other / path}");
++        target.skipToken("${");
++        assertThat(target.currentToken(), is("escapePath"));
++        assertThat(target.nextToken(), is(":"));
++    }
++
++}
+
+Property changes on: src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ContextTest.java
+___________________________________________________________________
+Added: svn:keywords
+## -0,0 +1 ##
++Id Author Date Revision HeadURL
+\ No newline at end of property
+Index: src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionNodeTest.java
+===================================================================
+--- src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionNodeTest.java	(revision 0)
++++ src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionNodeTest.java	(working copy)
+@@ -0,0 +1,20 @@
++package org.tuckey.web.filters.urlrewrite.substitution.interpreter;
++
++import static org.hamcrest.CoreMatchers.is;
++import static org.junit.Assert.assertThat;
++
++import org.junit.Test;
++import org.tuckey.web.filters.urlrewrite.substitution.ChainedSubstitutionFilters;
++
++import java.util.Collections;
++
++public class FunctionNodeTest {
++
++    @Test
++    public void test() throws ParseException {
++        Context context = new Context("${trim: abc ${lower:Hello World} }");
++        FunctionNode node = new FunctionNode(null, new ChainedSubstitutionFilters(Collections.emptyList()));
++        node.parse(context);
++        assertThat(node.evaluate(), is("abc hello world"));
++    }
++}
+
+Property changes on: src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionNodeTest.java
+___________________________________________________________________
+Added: svn:keywords
+## -0,0 +1 ##
++Id Author Date Revision HeadURL
+\ No newline at end of property
+Index: src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionTest.java
+===================================================================
+--- src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionTest.java	(revision 0)
++++ src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionTest.java	(working copy)
+@@ -0,0 +1,97 @@
++package org.tuckey.web.filters.urlrewrite.substitution.interpreter;
++
++import static org.hamcrest.CoreMatchers.is;
++import static org.junit.Assert.assertThat;
++
++import org.junit.Test;
++import org.tuckey.web.filters.urlrewrite.substitution.ChainedSubstitutionFilters;
++
++import java.io.UnsupportedEncodingException;
++import java.util.Collections;
++
++/**
++ * @author <a href="https://twitter.com/kazurof">Kazuro Fukuhara</a>
++ */
++public class FunctionTest {
++
++    @Test
++    public void testTolower() {
++        assertThat(Function.TOLOWER.execute("ABCD", null, new ChainedSubstitutionFilters(Collections.EMPTY_LIST)), is("abcd"));
++        assertThat(Function.TOLOWER.execute("abCD1234XYzw", null, new ChainedSubstitutionFilters(Collections.EMPTY_LIST)),
++                is("abcd1234xyzw"));
++    }
++
++    @Test
++    public void testToupper() {
++        assertThat(Function.TOUPPER.execute("abcd", null, new ChainedSubstitutionFilters(Collections.EMPTY_LIST)), is("ABCD"));
++        assertThat(Function.TOUPPER.execute("abCD1234XYzw", null, new ChainedSubstitutionFilters(Collections.EMPTY_LIST)),
++                is("ABCD1234XYZW"));
++    }
++
++    @Test
++    public void testTrim() {
++        assertThat(Function.TRIM.execute("   abcd  ", null, new ChainedSubstitutionFilters(Collections.EMPTY_LIST)), is("abcd"));
++        assertThat(Function.TRIM.execute("    ", null, new ChainedSubstitutionFilters(Collections.EMPTY_LIST)), is(""));
++    }
++
++    @Test
++    public void testReplaceall() {
++        assertThat(Function.REPLACEALL.execute("abcd1234abcxyzw:abc:stu", null, new ChainedSubstitutionFilters(
++                Collections.EMPTY_LIST)), is("stud1234stuxyzw"));
++    }
++
++    @Test
++    public void testReplacefirst() {
++        assertThat(Function.REPLACEFIRST.execute("abcd1234abcxyzw:abc:stu", null, new ChainedSubstitutionFilters(
++                Collections.EMPTY_LIST)), is("stud1234abcxyzw"));
++    }
++
++    @Test
++    public void testEscape() throws UnsupportedEncodingException {
++        // \u65E5\u672C\u8A9E is some Japanese string.
++        assertThat(Function.ESCAPE.execute("utf-8:abc", null, new ChainedSubstitutionFilters(Collections.EMPTY_LIST)), is("abc"));
++        assertThat(
++                Function.ESCAPE.execute("utf8:\u65E5\u672C\u8A9E", null, new ChainedSubstitutionFilters(Collections.EMPTY_LIST)),
++                is("%E6%97%A5%E6%9C%AC%E8%AA%9E"));
++        assertThat(Function.ESCAPE.execute("utf8:abcd!&'()0#$%&", null, new ChainedSubstitutionFilters(Collections.EMPTY_LIST)),
++                is("abcd%21%26%27%28%290%23%24%25%26"));
++    }
++
++    @Test
++    public void testEscapepath() throws UnsupportedEncodingException {
++        /*
++         * I could't know this test is enough to keep the quality. Is there any
++         * specification or document for this method??? TODO check true spec of
++         * this method and do test properly
++         */
++        assertThat(Function.ESCAPEPATH.execute("utf8:\u65E5\u672C\u8A9E", null, new ChainedSubstitutionFilters(
++                Collections.EMPTY_LIST)), is("%e6%97%a5%e6%9c%ac%e8%aa%9e"));
++    }
++
++    @Test
++    public void testUnescape() throws UnsupportedEncodingException {
++        assertThat(Function.UNESCAPE.execute("utf-8:abc", null, new ChainedSubstitutionFilters(Collections.EMPTY_LIST)),
++                is("abc"));
++        assertThat(Function.UNESCAPE.execute("utf8:%E6%97%A5%E6%9C%AC%E8%AA%9E", null, new ChainedSubstitutionFilters(
++                Collections.EMPTY_LIST)), is("\u65E5\u672C\u8A9E"));
++        assertThat(Function.UNESCAPE.execute("utf8:abcd%21%26%27%28%290%23%24%25%26", null, new ChainedSubstitutionFilters(
++                Collections.EMPTY_LIST)), is("abcd!&'()0#$%&"));
++    }
++
++    @Test
++    public void testUnescapepath() throws UnsupportedEncodingException {
++        /*
++         * I could't know this test is enough to keep the quality. Is there any
++         * specification or document for this method??? TODO check true spec of
++         * this method and do test properly
++         */
++        assertThat(Function.UNESCAPEPATH.execute("utf8:\u65E5\u672C\u8A9E", null, new ChainedSubstitutionFilters(
++                Collections.EMPTY_LIST)), is("???"));
++        assertThat(Function.UNESCAPEPATH.execute("utf8:%e6%97%a5%e6%9c%ac%e8%aa%9e", null, new ChainedSubstitutionFilters(
++                Collections.EMPTY_LIST)), is("\u65E5\u672C\u8A9E"));
++        assertThat(Function.UNESCAPEPATH.execute("utf8:abcd%21%26%27%28%290%23%24%25%26", null, new ChainedSubstitutionFilters(
++                Collections.EMPTY_LIST)), is("abcd!&'()0#$%&"));
++        assertThat(Function.UNESCAPEPATH.execute("utf8:abCD%21%26%27%28%290%23%24%25%26", null, new ChainedSubstitutionFilters(
++                Collections.EMPTY_LIST)), is("abCD!&'()0#$%&"));
++    }
++}
+
+Property changes on: src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/FunctionTest.java
+___________________________________________________________________
+Added: svn:keywords
+## -0,0 +1 ##
++Id Author Date Revision HeadURL
+\ No newline at end of property
+Index: src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ParamNodeTest.java
+===================================================================
+--- src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ParamNodeTest.java	(revision 0)
++++ src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ParamNodeTest.java	(working copy)
+@@ -0,0 +1,22 @@
++package org.tuckey.web.filters.urlrewrite.substitution.interpreter;
++
++import static org.hamcrest.CoreMatchers.is;
++import static org.junit.Assert.assertThat;
++
++import org.junit.Test;
++import org.tuckey.web.filters.urlrewrite.substitution.ChainedSubstitutionFilters;
++
++import java.util.Collections;
++
++public class ParamNodeTest {
++
++    @Test
++    public void test() throws ParseException {
++        Context context = new Context("abcd:hogehoge:wawawa");
++        ParamNode node = new ParamNode(null, new ChainedSubstitutionFilters(Collections.EMPTY_LIST));
++        node.parse(context);
++        assertThat(node.elementList.get(0).toString(), is("abcd"));
++        assertThat(node.secondElement.toString(), is("hogehoge:wawawa"));
++    }
++
++}
+
+Property changes on: src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ParamNodeTest.java
+___________________________________________________________________
+Added: svn:keywords
+## -0,0 +1 ##
++Id Author Date Revision HeadURL
+\ No newline at end of property
+Index: src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ToValueNodeTest.java
+===================================================================
+--- src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ToValueNodeTest.java	(revision 0)
++++ src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ToValueNodeTest.java	(working copy)
+@@ -0,0 +1,39 @@
++package org.tuckey.web.filters.urlrewrite.substitution.interpreter;
++
++import static org.hamcrest.CoreMatchers.is;
++import static org.junit.Assert.assertThat;
++
++import org.junit.Assert;
++import org.junit.Test;
++import org.tuckey.web.filters.urlrewrite.substitution.ChainedSubstitutionFilters;
++
++import java.util.Collections;
++
++public class ToValueNodeTest {
++
++    @Test
++    public void test() throws ParseException {
++        Context context = new Context("${replace:my cat is a blue cat:cat:dog}");
++        ToValueNode node = new ToValueNode(null, new ChainedSubstitutionFilters(Collections.emptyList()));
++        node.parse(context);
++        ElementNode target = (ElementNode) node.elementList.get(0);
++        Assert.assertTrue(target.node instanceof FunctionNode);
++        assertThat(node.evaluate(), is("my dog is a blue dog"));
++    }
++
++    @Test
++    public void test2() throws ParseException {
++        Context context = new Context("/search/${trim: abc ${lower:Hello World} }/hoge/");
++        ToValueNode node = new ToValueNode(null, new ChainedSubstitutionFilters(Collections.EMPTY_LIST));
++        node.parse(context);
++        assertThat(node.evaluate(), is("/search/abc hello world/hoge/"));
++    }
++
++    @Test
++    public void test3() throws ParseException {
++        Context context = new Context("/search/${lower:${upper:ABCD}}");
++        ToValueNode node = new ToValueNode(null, new ChainedSubstitutionFilters(Collections.EMPTY_LIST));
++        node.parse(context);
++        assertThat(node.evaluate(), is("/search/abcd"));
++    }
++}
+
+Property changes on: src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/ToValueNodeTest.java
+___________________________________________________________________
+Added: svn:keywords
+## -0,0 +1 ##
++Id Author Date Revision HeadURL
+\ No newline at end of property
+Index: src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/TokenizerTest.java
+===================================================================
+--- src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/TokenizerTest.java	(revision 0)
++++ src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/TokenizerTest.java	(working copy)
+@@ -0,0 +1,63 @@
++package org.tuckey.web.filters.urlrewrite.substitution.interpreter;
++
++import static org.junit.Assert.assertEquals;
++
++import org.junit.Test;
++
++public class TokenizerTest {
++
++    @Test
++    public void testTokenizer() {
++        doTokenSizeTest("${escapePath:UTF-8:a b c : other / path}", 9);
++    }
++
++    @Test
++    public void testTokenizer2() {
++        doTokenSizeTest("abcd${escapePath:UTF-8:a b c : other / path}", 10);
++    }
++
++    @Test
++    public void testTokenizer3() {
++        doTokenSizeTest("/test/${upper:$1}/${upper:$1}.html", 13);
++    }
++
++    @Test
++    public void testTokenizer4() {
++        doTokenSizeTest("/search/${escapePath:${unescape:$1}}", 10);
++    }
++
++    @Test
++    public void testTokenizer5() {
++        doTokenSizeTest("/search/${escapePath:${unescape:$1}}/hoge/${unescape:$1}", 16);
++    }
++
++    @Test
++    public void testTokenizer6() {
++        doTokenSizeTest("/search/${escapePath:${unescape:$1}}/hoge/${escapePath:${unescape:$1}}", 20);
++    }
++
++    @Test
++    public void testTokenizer7() {
++        doTokenSizeTest("/search/${escapePath:${unescape:$1}}/hoge/${escapePath:${unescape:$1}}abced:hoge", 23);
++    }
++
++    @Test
++    public void testTokenizer8() {
++        doTokenSizeTest("/search/${trim: abc ${lower:Hello World} }/hoge/", 13);
++    }
++
++    @Test
++    public void testTokenizer9() {
++        doTokenSizeTest("/file/hogehoge?fuga=$1&amp;type=${escape:$2}&amp;url=%{request-url}hogehoge&amp;", 8);
++        doTokenSizeTest("${escape:$2}&amp;url=%{request-url}", 6);
++        doTokenSizeTest("url=%{request-url}${escape:$2}", 6);
++        doTokenSizeTest("url=%{request-url}${escape:%{request-url}}", 6);
++        doTokenSizeTest("url=%{request-url}${escape:%{request-url}}%{request-url}", 7);
++    }
++
++    private void doTokenSizeTest(String pattern, int size) {
++        Tokenizer target = new Tokenizer(pattern);
++        assertEquals(size, target.tokens.size());
++
++    }
++}
+
+Property changes on: src/test/java/org/tuckey/web/filters/urlrewrite/substitution/interpreter/TokenizerTest.java
+___________________________________________________________________
+Added: svn:keywords
+## -0,0 +1 ##
++Id Author Date Revision HeadURL
+\ No newline at end of property
+Index: src/test/java/org/tuckey/web/filters/urlrewrite/utils/FunctionReplacerTest.java
+===================================================================
+--- src/test/java/org/tuckey/web/filters/urlrewrite/utils/FunctionReplacerTest.java	(revision 442)
++++ src/test/java/org/tuckey/web/filters/urlrewrite/utils/FunctionReplacerTest.java	(working copy)
+@@ -95,4 +95,21 @@
+         assertEquals("aFOOBAR b", FunctionReplacer.replace("a${upper:${lower:fOObAR}} b"));
+     }
+ 
++    public void testRecursive2() throws InvocationTargetException, IOException, ServletException {
++        String target = "a${upper:AbCd  ${lower:fOObAR}  1234  } b";
++        assertTrue(FunctionReplacer.containsFunction(target));
++        assertEquals("aABCD  FOOBAR  1234   b", FunctionReplacer.replace(target));
++    }
++
++    public void testRecursive3() throws InvocationTargetException, IOException, ServletException {
++        String target = "a${trim:AbCd  ${lower:fOObAR}  1234  } b";
++        assertTrue(FunctionReplacer.containsFunction(target));
++        assertEquals("aAbCd  foobar  1234 b", FunctionReplacer.replace(target));
++    }
++
++    public void testSeries() throws InvocationTargetException, IOException, ServletException {
++        String target = "a${upper:hoge} ${lower:fOObAR} b";
++        assertTrue(FunctionReplacer.containsFunction(target));
++        assertEquals("aHOGE foobar b", FunctionReplacer.replace(target));
++    }
+ }
